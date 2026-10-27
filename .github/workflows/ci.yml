@@ -16,13 +16,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ['20', '22']
+        node: ['20', '22', '24']
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+
+      - name: Install test dependencies
+        run: npm ci
 
       - name: Validate package manifest and patch
         run: npm run validate

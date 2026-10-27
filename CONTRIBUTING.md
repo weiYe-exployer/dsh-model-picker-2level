@@ -12,8 +12,9 @@
 提交前必须通过：
 
 ```bash
+npm ci            # 安装测试依赖；插件运行时仍由宿主提供 React
 npm run validate   # 清单、patch、locale、图标、禁用依赖检查
-npm test           # 结构测试
+npm test           # 纯函数、结构契约和 React DOM 交互测试
 ```
 
 ## 在宿主里试插件

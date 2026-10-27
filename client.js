@@ -133,10 +133,10 @@ window.__ModuleLoader__.load({
      * the remembered choice for it, then the model's provider default.
      */
     function resolveEffort(current, group, model) {
+      if (!model?.reasoning) return undefined;
       const same = Boolean(current) && current.provider === group?.id && current.model === model?.id;
       const fallback = model?.reasoning?.defaultEffort;
       if (same) return current.reasoningEffort ?? fallback;
-      if (!model?.reasoning) return undefined;
       const key = effortKey(group?.id, model?.id);
       return effortMemory.has(key) ? effortMemory.get(key) : fallback;
     }
@@ -280,6 +280,12 @@ window.__ModuleLoader__.load({
     const PANE_MODELS = 'models';
     const PANE_EFFORT = 'effort';
 
+    // A slot can reuse its component across conversations. Give each session
+    // its own directory subscription and pending-operation lifecycle.
+    function PickerSeat(props) {
+      return h(ModelPicker, { ...props, key: props.sessionId });
+    }
+
     function ModelPicker(props) {
       ensureStyles();
 
@@ -293,11 +299,13 @@ window.__ModuleLoader__.load({
         props.available ? { store: props.store, load: props.load, select: props.select } : null,
       );
       const [reason, setReason] = React.useState(props.available ? null : (props.reason ?? null));
+      const [resolveAttempt, setResolveAttempt] = React.useState(0);
 
       React.useEffect(() => {
         if (dir) return undefined;
         let alive = true;
         let tries = 0;
+        let timer;
         const attempt = () => {
           if (!alive || typeof props.resolve !== 'function') return;
           try {
@@ -317,13 +325,14 @@ window.__ModuleLoader__.load({
             console.error('[model-picker-2level] resolve failed:', message, error);
           }
           tries += 1;
-          if (tries < 8) setTimeout(attempt, 300 * tries);
+          if (tries < 8) timer = setTimeout(attempt, 300 * tries);
         };
         attempt();
         return () => {
           alive = false;
+          clearTimeout(timer);
         };
-      }, [dir, props.resolve]);
+      }, [dir, props.resolve, resolveAttempt]);
 
       // Load the catalog as soon as the directory exists: without this the
       // snapshot stays empty until the menu is opened, so the trigger would
@@ -359,6 +368,13 @@ window.__ModuleLoader__.load({
       const menuRef = React.useRef(null);
       const searchRef = React.useRef(null);
       const listRef = React.useRef(null);
+      const pendingRef = React.useRef(false);
+      const menuEpoch = React.useRef(0);
+      const mountedRef = React.useRef(false);
+      React.useEffect(() => {
+        mountedRef.current = true;
+        return () => { mountedRef.current = false; };
+      }, []);
 
       const groups = React.useMemo(() => orderProviders(state?.groups), [state?.groups]);
       const current = state?.current ?? null;
@@ -420,7 +436,7 @@ window.__ModuleLoader__.load({
 
       const rows = React.useMemo(() => {
         const q = query.trim();
-        if (q !== '') {
+        if (q !== '' && pane !== PANE_EFFORT) {
           // Level 1 searches every provider; level 2 searches its own provider.
           const scope = browsingGroup ? [browsingGroup] : groups;
           const flat = [];
@@ -440,7 +456,9 @@ window.__ModuleLoader__.load({
           for (const level of reasoning.efforts ?? []) {
             list.push({ kind: 'effort', effort: level.id, label: level.name });
           }
-          return list;
+          return q === '' ? list : list.filter((row) =>
+            subsequenceScore(row.label, q) >= 0 || subsequenceScore(row.effort, q) >= 0,
+          );
         }
         return groups.map((group) => ({ kind: 'provider', group }));
       }, [query, browsingGroup, pane, groups, currentModel, t]);
@@ -491,6 +509,7 @@ window.__ModuleLoader__.load({
 
       const openMenu = React.useCallback(() => {
         if (locked) return;
+        menuEpoch.current += 1;
         setQuery('');
         setFailure(null);
         setPane(PANE_PROVIDERS);
@@ -500,10 +519,12 @@ window.__ModuleLoader__.load({
         if (load) load();
         requestAnimationFrame(() => {
           if (searchRef.current) searchRef.current.focus();
+          else if (menuRef.current) menuRef.current.focus();
         });
       }, [locked, available, measure, load]);
 
       const closeMenu = React.useCallback(() => {
+        menuEpoch.current += 1;
         setOpen(false);
         setPane(PANE_PROVIDERS);
         setBrowsingGroupId(null);
@@ -535,7 +556,7 @@ window.__ModuleLoader__.load({
         if (pane === PANE_PROVIDERS) {
           index = rows.findIndex((row) => row.kind === 'provider' && row.group.id === currentGroupId);
         } else if (pane === PANE_MODELS) {
-          index = rows.findIndex((row) => row.kind === 'model' && row.model.id === current?.model);
+          index = rows.findIndex((row) => row.kind === 'model' && row.group.id === currentGroupId && row.model.id === current?.model);
         }
         setActive((previous) => {
           const next = index >= 0 ? index : 0;
@@ -552,7 +573,7 @@ window.__ModuleLoader__.load({
 
       const choose = React.useCallback(
         async (row) => {
-          if (!row || busy) return;
+          if (!row || locked || pendingRef.current) return;
           if (row.kind === 'provider') {
             setBrowsingGroupId(row.group.id);
             setPane(PANE_MODELS);
@@ -566,51 +587,37 @@ window.__ModuleLoader__.load({
             setActive(at >= 0 ? at : 0);
             return;
           }
-          if (row.kind === 'effort') {
-            if (!current) return;
-            setBusy(true);
-            setFailure(null);
-            try {
-              const patch = { provider: current.provider, model: current.model };
-              if (row.effort !== undefined) patch.reasoningEffort = row.effort;
-              // Remember the explicit level so switching away and back restores
-              // it instead of resetting to the provider default.
-              rememberEffort(current.provider, current.model, row.effort);
-              const result = await select(patch);
-              if (result && result.ok === false) {
-                setFailure(
-                  result.error?.code === 'session/writer-held'
-                    ? t('error.sessionInUse')
-                    : t('error.action', { message: result.error?.message ?? String(result.error) }),
-                );
-              } else closeMenu();
-            } catch (error) {
-              setFailure(t('error.action', { message: error?.message ?? String(error) }));
-            } finally {
-              setBusy(false);
-            }
-            return;
-          }
+          if (row.kind === 'effort' && !current) return;
+          const epoch = menuEpoch.current;
+          const stillOpen = () => mountedRef.current && epoch === menuEpoch.current;
+          pendingRef.current = true;
           setBusy(true);
           setFailure(null);
           try {
-            const selection = selectionFor(current, row.group, row.model);
-            rememberEffort(row.group.id, row.model.id, selection.reasoningEffort);
+            const selection = row.kind === 'effort'
+              ? { provider: current.provider, model: current.model }
+              : selectionFor(current, row.group, row.model);
+            if (row.kind === 'effort' && row.effort !== undefined) selection.reasoningEffort = row.effort;
             const result = await select(selection);
             if (result && result.ok === false) {
-              setFailure(
+              if (stillOpen()) setFailure(
                 result.error?.code === 'session/writer-held'
                   ? t('error.sessionInUse')
                   : t('error.action', { message: result.error?.message ?? String(result.error) }),
               );
-            } else closeMenu();
+            } else {
+              // Only a successful write may change the remembered choice.
+              if (mountedRef.current) rememberEffort(selection.provider, selection.model, selection.reasoningEffort);
+              if (stillOpen()) closeMenu();
+            }
           } catch (error) {
-            setFailure(t('error.action', { message: error?.message ?? String(error) }));
+            if (stillOpen()) setFailure(t('error.action', { message: error?.message ?? String(error) }));
           } finally {
-            setBusy(false);
+            pendingRef.current = false;
+            if (mountedRef.current) setBusy(false);
           }
         },
-        [busy, current, select, t, closeMenu],
+        [locked, current, select, t, closeMenu],
       );
 
       const stepActive = React.useCallback(
@@ -635,6 +642,12 @@ window.__ModuleLoader__.load({
       const onMenuKeyDown = React.useCallback(
         (event) => {
           if (event.nativeEvent && event.nativeEvent.isComposing) return;
+          // Enter is the only keyboard activation key. Cancel native Space
+          // activation on buttons, while leaving search text editing intact.
+          if (event.key === ' ' && event.target.closest?.('button')) {
+            event.preventDefault();
+            return;
+          }
           if (event.key === 'Escape') {
             event.preventDefault();
             if (query !== '') {
@@ -655,14 +668,13 @@ window.__ModuleLoader__.load({
             return;
           }
           if (event.key === 'Enter') {
+            // Buttons retain native keyboard activation (back, retry, effort,
+            // and the actually focused row), rather than choosing a stale row.
+            if (event.target.closest?.('button')) return;
             if (rows.length === 0) return;
             event.preventDefault();
             choose(rows[Math.min(Math.max(active, 0), rows.length - 1)]);
             return;
-          }
-          if (event.key === 'Tab' && !event.shiftKey && pane !== PANE_PROVIDERS) {
-            event.preventDefault();
-            goBack();
           }
         },
         [query, pane, rows, active, choose, closeMenu, goBack, stepActive],
@@ -764,16 +776,14 @@ window.__ModuleLoader__.load({
       // the full, untruncated reason instead of an empty list. The desktop app
       // has no DevTools open by default, so this panel is the only channel
       // through which a Cordis service error can reach the user.
-      if (!available) {
-        return h(
+      const diagnostic = !available ? h(
           'div',
           { className: 'dmp-status dmp-diag' },
           h('div', { className: 'dmp-diag-title' }, t('error.unavailable')),
           h('pre', { className: 'dmp-diag-body' }, String(reason ?? 'unknown')),
-          h('button', { type: 'button', className: 'dmp-diag-retry', onClick: () => { setReason(null); setDir(null); } }, t('retry')),
+          h('button', { type: 'button', className: 'dmp-diag-retry', onClick: () => { setResolveAttempt((value) => value + 1); } }, t('retry')),
           h('div', { className: 'dmp-diag-hint' }, t('error.unavailableHint')),
-        );
-      }
+        ) : null;
 
       const body = (() => {
         if (loading && rows.length === 0) return h('div', { className: 'dmp-status' }, t('status.loading'));
@@ -783,7 +793,7 @@ window.__ModuleLoader__.load({
         return h(
           'div',
           { className: 'dmp-groups', ref: listRef, role: 'menu', 'aria-label': t('menu.aria') },
-          query.trim() !== '' && browsingGroup === null
+          query.trim() !== '' && browsingGroup === null && pane !== PANE_EFFORT
             ? h('div', { className: 'dmp-group-label' }, t('search.results', { count: rows.length }))
             : null,
           rows.map((row, index) =>
@@ -822,11 +832,16 @@ window.__ModuleLoader__.load({
                 'div',
                 {
                   ref: menuRef,
+                  tabIndex: -1,
                   className: 'dmp-menu',
                   style: menuPos,
                   'aria-busy': busy || loading ? 'true' : 'false',
                   onKeyDown: onMenuKeyDown,
-                  onMouseDown: (event) => event.preventDefault(),
+                  onMouseDown: (event) => {
+                    // Keep list clicks in the search field, but allow editing
+                    // its caret and selecting diagnostic text for copying.
+                    if (event.target.closest?.('button')) event.preventDefault();
+                  },
                   onBlur: (event) => {
                     const next = event.relatedTarget;
                     if (next && menuRef.current && menuRef.current.contains(next)) return;
@@ -835,7 +850,7 @@ window.__ModuleLoader__.load({
                     closeMenu();
                   },
                 },
-                h(
+                available ? h(
                   'div',
                   { className: 'dmp-search-row' },
                   h('span', { className: 'dmp-search-glyph', 'aria-hidden': 'true' }),
@@ -844,19 +859,12 @@ window.__ModuleLoader__.load({
                     className: 'dmp-search',
                     type: 'text',
                     role: 'searchbox',
-                    'aria-label': t('search.placeholder'),
-                    placeholder: browsingGroup ? t('search.placeholderLocal') : t('search.placeholder'),
+                    'aria-label': t(pane === PANE_EFFORT ? 'search.placeholderEffort' : browsingGroup ? 'search.placeholderLocal' : 'search.placeholder'),
+                    placeholder: t(pane === PANE_EFFORT ? 'search.placeholderEffort' : browsingGroup ? 'search.placeholderLocal' : 'search.placeholder'),
                     value: query,
                     onChange: (event) => {
                       setQuery(event.target.value);
                       setActive(0);
-                    },
-                    onKeyDown: (event) => {
-                      if (event.nativeEvent && event.nativeEvent.isComposing) return;
-                      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-                        event.preventDefault();
-                        stepActive(event.key === 'ArrowDown' ? 1 : -1);
-                      }
                     },
                   }),
                   query !== ''
@@ -875,7 +883,7 @@ window.__ModuleLoader__.load({
                         '\u00d7',
                       )
                     : null,
-                ),
+                ) : null,
                 header,
                 failure
                   ? h(
@@ -903,7 +911,7 @@ window.__ModuleLoader__.load({
                     t('warning.groupLoad', { name: item.name || item.id, message: item.message }),
                   ),
                 ),
-                body,
+                diagnostic || body,
                 effortEntry,
               ),
               document.body,
@@ -932,7 +940,11 @@ window.__ModuleLoader__.load({
             onClick: () => (open ? closeMenu() : openMenu()),
             onKeyDown: (event) => {
               if (event.nativeEvent && event.nativeEvent.isComposing) return;
-              if (!open && (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ')) {
+              if (event.key === ' ') {
+                event.preventDefault();
+                return;
+              }
+              if (!open && event.key === 'Enter') {
                 event.preventDefault();
                 openMenu();
               }
@@ -994,6 +1006,7 @@ window.__ModuleLoader__.load({
       'status.loadingShort': '加载模型…',
       'search.placeholder': '搜索全部模型（跨供应商）…',
       'search.placeholderLocal': '在本供应商内搜索…',
+      'search.placeholderEffort': '搜索思考强度…',
       'search.empty': '无匹配模型',
       'search.clear': '清除搜索',
       'search.results': '搜索结果：{count} 个模型',
@@ -1019,6 +1032,7 @@ window.__ModuleLoader__.load({
       'status.loadingShort': 'Loading models…',
       'search.placeholder': 'Search all models (all providers)…',
       'search.placeholderLocal': 'Search this provider…',
+      'search.placeholderEffort': 'Search reasoning efforts…',
       'search.empty': 'No matching model',
       'search.clear': 'Clear search',
       'search.results': 'Search results: {count} models',
@@ -1075,15 +1089,15 @@ window.__ModuleLoader__.load({
                     } catch {
                       isSubagent = false;
                     }
-                    if (isSubagent) return unavailable('subagent session');
+                    if (isSubagent) return { ...unavailable('subagent session'), sessionId, locked: true };
 
                     let directoryFor;
                     try {
                       directoryFor = models?.directoryFor;
                     } catch (error) {
-                      return unavailable('service: ' + describe(error));
+                      return { ...unavailable('service: ' + describe(error)), sessionId };
                     }
-                    if (typeof directoryFor !== 'function') return unavailable('modelDirectories service unavailable');
+                    if (typeof directoryFor !== 'function') return { ...unavailable('modelDirectories service unavailable'), sessionId };
 
                     // Resolve lazily and repeatedly: the session binding may not
                     // exist at inject time, and `directoryFor` throws until it does.
@@ -1100,16 +1114,16 @@ window.__ModuleLoader__.load({
                     };
 
                     try {
-                      return { available: true, locked: false, resolve, ...resolve() };
+                      return { sessionId, available: true, locked: false, resolve, ...resolve() };
                     } catch (error) {
                       // Stay mounted and retrying instead of rendering a dead
                       // button: a too-early `directoryFor` used to disable the
                       // seat permanently.
-                      return { available: false, locked: false, resolve, reason: describe(error) };
+                      return { sessionId, available: false, locked: false, resolve, reason: describe(error) };
                     }
                   },
                 },
-                ModelPicker,
+                PickerSeat,
               ),
             );
           },

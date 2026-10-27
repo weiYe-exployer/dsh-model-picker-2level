@@ -169,6 +169,11 @@ test('models without reasoning produce a selection with no effort field', () => 
   assert.equal(JSON.stringify(selection), JSON.stringify({ provider: 'qiniu', model: 'plain' }));
 });
 
+test('a model that lost reasoning support never inherits a stale current effort', () => {
+  const selection = selectionFor({ provider: 'qiniu', model: 'plain', reasoningEffort: 'high' }, GROUP, { id: 'plain' });
+  assert.equal(JSON.stringify(selection), JSON.stringify({ provider: 'qiniu', model: 'plain' }));
+});
+
 test('selection carries the resolved effort when one exists', () => {
   const selection = selectionFor(null, GROUP, MODEL);
   assert.equal(JSON.stringify(selection), JSON.stringify({ provider: 'qiniu', model: 'gpt-4', reasoningEffort: 'medium' }));

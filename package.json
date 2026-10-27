@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-model-picker-2level",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Two-level model picker for DeepSeek Harness: choose a provider first, then one of its models.",
   "private": true,
   "type": "module",
@@ -29,7 +29,7 @@
   ],
   "scripts": {
     "validate": "node scripts/validate.mjs",
-    "test": "node --test test/"
+    "test": "node --test"
   },
   "engines": {
     "node": ">=20"
@@ -45,5 +45,10 @@
         "@deepseek-ai/dsh-client-ui-model-selection"
       ]
     }
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   }
 }

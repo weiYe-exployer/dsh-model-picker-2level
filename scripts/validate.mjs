@@ -11,6 +11,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Script } from 'node:vm';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const problems = [];
@@ -70,6 +71,11 @@ for (const rel of ['index.js', 'client.js', 'cordis.patch.yml', 'icon.svg', 'loc
 const clientPath = join(ROOT, 'client.js');
 if (existsSync(clientPath)) {
   const source = readFileSync(clientPath, 'utf8');
+  try {
+    new Script(source, { filename: 'client.js' });
+  } catch (error) {
+    problem(`client.js is not valid JavaScript: ${error.message}`);
+  }
   if (!source.includes('window.__ModuleLoader__.load')) {
     problem('client.js must register through window.__ModuleLoader__.load');
   }

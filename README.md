@@ -4,8 +4,8 @@
 
 ![效果图](docs/assets/model-picker-2level.png)
 
-> **当前版本 `0.1.4` —— 功能可用，已实测通过。**
-> 存档说明见 [docs/releases/v0.1.4.md](docs/releases/v0.1.4.md)。
+> **当前版本 `0.1.5` —— 基本功能定稿，用户实测通过，59 项自动化测试通过。**
+> 定稿范围与已知限制见 [docs/releases/v0.1.5.md](docs/releases/v0.1.5.md)。
 
 ## 为什么
 
@@ -27,7 +27,7 @@
 - **思考强度可记忆**：按模型记住选择，切走再切回不会重置为「供应商默认」
 - **当前项聚焦**：打开时自动高亮当前模型
 - **配置顺序不变**：列表顺序严格跟随 `llm-pi-ai` 配置，只做强调不做重排
-- **键盘可用**：↑↓ 移动、Enter 选中、Esc 逐级返回、Tab 回退、输入法安全
+- **键盘可用**：↑↓ 移动、Enter 打开或确认、Esc 先清搜索再返回；无 Tab 返回或空格激活快捷键，输入法安全
 - **点外部关闭**：弹层外任意位置按下即关闭
 - **跟随窗口**：最大化/还原/滚动时弹层重新定位，不漂移
 - **主题一致**：仅使用 `--dsw-alias-*` 主题令牌，跟随亮/暗色切换
@@ -41,12 +41,12 @@
 | M1 Spike 验证 | ✅ → [docs/m1-spike-result.md](docs/m1-spike-result.md) |
 | M2 MVP | ✅ 已实测通过 → [docs/m2-implementation.md](docs/m2-implementation.md) |
 | M3 打磨 | 🟡 部分（键盘/无障碍/i18n 已做；动画、Config、像素级对齐待办） |
-| 版本存档 | ✅ v0.1.4 → [docs/releases/v0.1.4.md](docs/releases/v0.1.4.md) |
+| 基本功能定稿 | ✅ v0.1.5 → [docs/releases/v0.1.5.md](docs/releases/v0.1.5.md) |
 
 **接手开发请按此顺序读**：
 
 1. 本文件（是什么、怎么跑）
-2. [docs/releases/v0.1.4.md](docs/releases/v0.1.4.md) —— **当前存档：架构事实、代码地图、验证方法、坑**
+2. [docs/releases/v0.1.5.md](docs/releases/v0.1.5.md) —— **当前定稿：功能范围、验收结果、已知限制**；架构细节另见历史 v0.1.4 存档
 3. [docs/TASKS.md](docs/TASKS.md) —— 完整任务清单、依赖关系、验收标准
 4. [docs/design.md](docs/design.md) + [docs/decisions.md](docs/decisions.md) —— 设计与决策依据（**不要轻易推翻**）
 
@@ -71,15 +71,17 @@ dsh plugin --profile desktop remove @local/dsh-model-picker-2level
 
 ## 开发
 
+用户功能、实际键位及人工验收步骤见 [用户说明与验收手册](docs/user-guide-and-acceptance.md)。
+
 ```bash
+# 安装仅供测试使用的 React / ReactDOM / jsdom（宿主运行时不依赖这些安装）
+npm ci
+
 # 清单与入口校验
-node scripts/validate.mjs
+npm run validate
 
-# 纯函数与契约测试（29 项）
-node test/pure.test.mjs
-
-# 包结构测试（8 项）
-node test/package.test.mjs
+# 全部自动化测试：纯函数、包结构和真实 React DOM 交互
+npm test
 ```
 
 > 若 `npm test` 因沙箱禁止派生子进程报 `spawn EPERM`，直接 `node <file>` 执行即可，效果等价。
@@ -87,7 +89,8 @@ node test/package.test.mjs
 本项目**无构建步骤**：`client.js` 直接以 `window.__ModuleLoader__.load(...)` 形式交付，仓库内提交的就是运行产物。
 
 > ⚠️ **改完 `client.js` 必须重启桌面应用**才能验证（客户端模块无热重载）。
-> 纯函数已抽到 `__pure` 导出并用 `node:vm` 单测，尽量用测试替代重启。
+> 纯函数通过 `__pure` + `node:vm` 单测；交互测试用真实 React 和 jsdom 验证事件冒泡、异步写回及会话切换。
+> 当前审视与验证范围见 [docs/review-2026-10-27.md](docs/review-2026-10-27.md)。
 
 ## 项目结构
 
@@ -95,7 +98,7 @@ node test/package.test.mjs
 .
 ├─ .github/                     GitHub 模板与 CI
 ├─ docs/
-│  ├─ releases/v0.1.4.md        ★ 当前版本存档（接手先读这个）
+│  ├─ releases/v0.1.5.md        ★ 当前定稿存档（接手先读这个）
 │  ├─ TASKS.md                  ★ 开发任务清单
 │  ├─ design.md                 设计方案
 │  ├─ decisions.md              决策记录（ADR）
