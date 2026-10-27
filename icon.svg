@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Two-level model picker">
+  <rect x="4" y="10" width="56" height="44" rx="8" fill="#4d6bfe" opacity="0.12"/>
+  <rect x="4" y="10" width="56" height="44" rx="8" fill="none" stroke="#4d6bfe" stroke-width="2.5"/>
+  <rect x="13" y="19" width="24" height="6" rx="3" fill="#4d6bfe"/>
+  <rect x="13" y="30" width="17" height="6" rx="3" fill="#4d6bfe" opacity="0.55"/>
+  <rect x="13" y="41" width="20" height="6" rx="3" fill="#4d6bfe" opacity="0.3"/>
+  <path d="M43 22 L50 28 L43 34" fill="none" stroke="#4d6bfe" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

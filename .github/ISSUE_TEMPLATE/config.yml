@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: DeepSeek Harness 官方仓库
+    url: https://github.com/deepseek-ai/deepseek-harness
+    about: 宿主本身的问题（与插件无关）请提到官方仓库。

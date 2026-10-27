@@ -1,0 +1,5 @@
+# Loader patch for this plugin: one inserted row named after the package.
+# The row id is what `plugin_manager` and cordis.patch.yml overrides address.
+- insert:
+    - id: model-picker-2level
+      name: '@local/dsh-model-picker-2level'

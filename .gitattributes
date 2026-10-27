@@ -1,0 +1,7 @@
+# 统一按 LF 存储，避免 Windows/Unix 换行抖动
+* text=auto eol=lf
+
+# 二进制资源
+*.png binary
+*.zip binary
+*.tgz binary

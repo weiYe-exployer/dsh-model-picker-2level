@@ -1,0 +1,7 @@
+# 编辑器与排版
+editorconfig: true
+end-of-line: lf
+insert-final-newline: true
+trim-trailing-whitespace: true
+indent-style: space
+indent-size: 2
