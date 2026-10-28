@@ -3,7 +3,7 @@
 ## 开发环境
 
 - Node.js ≥ 20（`node --version` 确认）
-- DeepSeek Harness ≥ 0.2.1-rc.3（作为宿主验证插件行为）
+- DSH 运行时 0.2.1-rc.3（当前精确兼容声明；用 `dsh --version` 核实）
 
 本项目**没有构建步骤**：`client.js` 就是交付产物，直接以 `window.__ModuleLoader__.load(...)` 的形式提交。修改后无需编译。
 
@@ -15,6 +15,7 @@
 npm ci            # 安装测试依赖；插件运行时仍由宿主提供 React
 npm run validate   # 清单、patch、locale、图标、禁用依赖检查
 npm test           # 纯函数、结构契约和 React DOM 交互测试
+npm run check:package # 实际打包、隔离安装并检查包内文档
 ```
 
 ## 在宿主里试插件
@@ -24,7 +25,7 @@ npm test           # 纯函数、结构契约和 React DOM 交互测试
 dsh plugin --profile desktop add "<本仓库绝对路径>"
 
 # 移除
-dsh plugin --profile desktop remove @local/dsh-model-picker-2level
+dsh plugin --profile desktop remove @codewei823/dsh-model-picker-2level
 ```
 
 安装后打开 Web GUI，模型按钮应变为两级选择器。
@@ -34,8 +35,9 @@ dsh plugin --profile desktop remove @local/dsh-model-picker-2level
 - **不使用构建工具**，不引入运行时依赖；`require('react')` 由宿主的模块表提供
 - **不 require 任何 `@deepseek-ai/dsh-client-*` 包**（会在宿主升级时炸）；需要激活顺序时用 `package.json` 的 `dsh.client.inject`
 - **样式只用 `--dsw-alias-*` 主题令牌**，不写死颜色；类名统一加 `dmp-` 前缀，选择器限制在组件根节点内
-- **数据只读**：模型目录与当前选择全部来自 Host 投影，插件不 fold 会话事件、不自建第二份状态
-- 所有面向用户的文案走 locale 资源，不在组件里写死中英文
+- **状态来源与写回**：目录和当前选择来自 Host 投影，修改通过 `directory.select()` 写回；插件不 fold 会话事件、不维护第二份权威状态
+- UI 文案同步 `client.js` 内 `zh` / `en` 字典，经 `ctx.locale.register` 注册；`locale/zh.json` 和 `locale/en.json` 仅用于插件元数据
+- 当前用户行为以 [用户指南](docs/usage.md) 为准；`docs/archive/` 为历史设计与试验，不作为当前实现要求
 
 ## 提交信息
 
@@ -51,10 +53,10 @@ test: 增加 patch 格式断言
 ## 分支与 PR
 
 1. 从 `main` 切出 `feat/xxx` 或 `fix/xxx`
-2. 确保 `npm run validate && npm test` 通过
+2. 确保 `npm run validate`、`npm test` 和 `npm run check:package` 通过
 3. PR 描述里写明：改了什么、为什么、如何验证（附截图或日志）
 4. 关联 issue（如有）：`Closes #12`
 
 ## 报告问题
 
-用 [issue 模板](.github/ISSUE_TEMPLATE/bug_report.yml)，请附上：Harness 版本、插件版本、复现步骤、控制台报错。
+在源码仓库使用 `.github/ISSUE_TEMPLATE/bug_report.yml` 对应的 Bug 模板，请附上 DSH 运行时版本、插件版本、复现步骤和脱敏后的错误。模板由 GitHub 提供，不属于运行安装包。

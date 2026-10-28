@@ -1,5 +1,5 @@
 /**
- * Browser half of @local/dsh-model-picker-2level.
+ * Browser half of @codewei823/dsh-model-picker-2level.
  *
  * A two-level model picker for the composer model seat
  * (`conversation.input.model`):
@@ -22,10 +22,10 @@
  *  - There is no hot reload: changing this file requires restarting the app
  *    (rule R3).
  *
- * @see docs/design.md
+ * @see docs/architecture.md
  */
 window.__ModuleLoader__.load({
-  id: '@local/dsh-model-picker-2level',
+  id: '@codewei823/dsh-model-picker-2level',
   factory(require) {
     const React = require('react');
     const ReactDOM = require('react-dom');

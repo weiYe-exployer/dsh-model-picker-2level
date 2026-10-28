@@ -1,8 +1,10 @@
+> 历史归档：保留早期设计与试验背景，部分内容已被后续版本取代。当前操作以 [用户指南](../usage.md)、[测试说明](../testing.md) 和 [架构说明](../architecture.md) 为准。
+
 # 阶段 C 实现记录（M2 MVP）
 
 > 日期：2026-10-27
 > 状态：代码完成、单元测试通过、已安装到 profile；**待重启应用做真机验证**
-> 相关：[TASKS.md](TASKS.md) T-30~T-38、[design.md](design.md)、[decisions.md](decisions.md)
+> 相关：[TASKS.md](TASKS.md) T-30~T-38、[design.md](design.md)、[decisions.md](../decisions.md)
 
 ---
 
@@ -131,11 +133,11 @@ test('plugin only uses theme tokens for colours')  // 正则扫描 CSS，禁止 
 | # | 检查 | 预期 |
 |---|---|---|
 | V1 | 模型按钮外观 | 与内置一致（图标 + `供应商 / 模型` + effort + chevron） |
-| V2 | 打开后焦点 | 落在当前供应商行（lyrouter） |
-| V3 | 一级列表 | 4 家供应商，lyrouter 行有「当前使用」徽标 |
-| V4 | 点 lyrouter | 进入二级，21 个模型，当前项打勾且已滚动到可见 |
+| V2 | 打开后焦点 | 落在当前供应商行（provider-c） |
+| V3 | 一级列表 | 4 家供应商，provider-c 行有「当前使用」徽标 |
+| V4 | 点 provider-c | 进入二级，21 个模型，当前项打勾且已滚动到可见 |
 | V5 | 搜索 `glm`（一级） | 跨供应商命中 8 条，带供应商名 |
-| V6 | 进入 lyrouter 后搜索 `glm` | 只命中 `z-ai/glm-5.3`、`z-ai/glm-5.3-flash` |
+| V6 | 进入 provider-c 后搜索 `glm` | 只命中 `z-ai/glm-5.3`、`z-ai/glm-5.3-flash` |
 | V7 | 清空搜索 | 回到两级浏览 |
 | V8 | 选中一个模型 | 面板关闭，按钮显示新模型，**发消息确认真生效** |
 | V9 | 键位 | ↑↓ / Enter / Esc / Tab 全流程可用 |
@@ -180,12 +182,6 @@ dsh plugin --profile desktop remove @local/dsh-model-picker-2level
   只注入 `modelDirectories` 不够，还要注入它实现里用到的 `remote` / `remote.session`。
 - **UI 状态不要从「当前生效值」推导**。浏览目标与选中状态必须是两个独立状态。
 - **浮层定位必须跟随容器变化**，只在 open 时测量一定会漂移。
-
-### 附带：输出 token 上限收敛
-
-`~/.dsh/profiles/desktop/cordis.patch.yml` 中 `llm-pi-ai` 的 `maxTokens` 原先把
-**上下文窗口**当成了输出上限（最大 1048576），会被供应商拒绝或造成无谓长尾等待。
-已按实际需求统一收敛为 `32768`（= DSH 自身 `DEFAULT_MAX_TOKENS`），共 17 处。
 
 ## 10. M2 修复记录（0.1.4）
 

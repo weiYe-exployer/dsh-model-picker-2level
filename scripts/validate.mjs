@@ -83,7 +83,7 @@ if (existsSync(clientPath)) {
   if (pkg && idMatch && idMatch[1] !== pkg.name) {
     problem(`client.js registers id "${idMatch[1]}" but package name is "${pkg.name}"`);
   }
-  // A plain-JS plugin must not import Harness packages (see docs/design.md §9).
+  // Runtime modules must not import Harness UI packages (see docs/architecture.md).
   const forbidden = [/require\(\s*['"]@deepseek-ai\/dsh-client-/];
   for (const pattern of forbidden) {
     if (pattern.test(source)) problem('client.js must not require Harness client packages (use dsh.client.inject for ordering)');

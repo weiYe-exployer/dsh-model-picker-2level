@@ -1,7 +1,10 @@
 # 编辑器与排版
-editorconfig: true
-end-of-line: lf
-insert-final-newline: true
-trim-trailing-whitespace: true
-indent-style: space
-indent-size: 2
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2

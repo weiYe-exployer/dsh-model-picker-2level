@@ -2,4 +2,4 @@
 # The row id is what `plugin_manager` and cordis.patch.yml overrides address.
 - insert:
     - id: model-picker-2level
-      name: '@local/dsh-model-picker-2level'
+      name: '@codewei823/dsh-model-picker-2level'

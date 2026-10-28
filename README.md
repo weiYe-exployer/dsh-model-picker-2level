@@ -1,147 +1,120 @@
-# dsh-model-picker-2level
+# 两级模型选择器 · DeepSeek Harness
 
-给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的两级模型选择器：先选供应商，再选该供应商下的模型。
+中文 | [English](README.en.md)
 
-![效果图](docs/assets/model-picker-2level.png)
+为 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness) 提供轻量的两级模型选择入口：先选供应商，再选模型。保留全局搜索和思考强度选择，让多供应商环境下的模型切换更清晰。
 
-> **当前版本 `0.1.5` —— 基本功能定稿，用户实测通过，59 项自动化测试通过。**
-> 定稿范围与已知限制见 [docs/releases/v0.1.5.md](docs/releases/v0.1.5.md)。
+[是什么](#是什么) · [功能](#功能) · [快速上手](#快速上手) · [使用方法](#使用方法) · [兼容性与运行环境](#兼容性与运行环境) · [常见问题](#常见问题) · [已知限制](#已知限制)
 
-## 为什么
+## 是什么
 
-配置了多家模型供应商之后，模型下拉会变成一个长长的平铺列表。以本项目开发时的真实配置为例：4 家供应商、约 33 个可选模型，找目标模型需要滚动逐条扫描。
+配置多家模型供应商后，平铺的模型列表会变得很长。两级模型选择器将列表拆分为供应商页和模型页，先缩小范围，再选择目标模型；也可以直接搜索全部模型。
 
-本插件把选择拆成两级：
+插件使用 Harness 已有的模型目录和会话选择能力，替换输入区的模型选择界面。供应商与模型仍由 Harness 配置和管理，内置的 /model 命令保持可用。
 
-```
-① 供应商   zai-coding-cn · qiniu · lyrouter · kimi-api
-                ↓ 点选
-② 模型     lyrouter 下的 21 个模型（只列本家）
-```
+## 功能
 
-## 特性
-
-- **两级导航**：一级只列供应商（含别名、模型数、「当前使用」徽章），二级只列该家模型
-- **浏览与使用解耦**：一级点哪家就浏览哪家，与当前在用的供应商无关
-- **保留原搜索**：一级可跨全部供应商搜索；二级搜索只搜本家
-- **思考强度可记忆**：按模型记住选择，切走再切回不会重置为「供应商默认」
-- **当前项聚焦**：打开时自动高亮当前模型
-- **配置顺序不变**：列表顺序严格跟随 `llm-pi-ai` 配置，只做强调不做重排
-- **键盘可用**：↑↓ 移动、Enter 打开或确认、Esc 先清搜索再返回；无 Tab 返回或空格激活快捷键，输入法安全
-- **点外部关闭**：弹层外任意位置按下即关闭
-- **跟随窗口**：最大化/还原/滚动时弹层重新定位，不漂移
-- **主题一致**：仅使用 `--dsw-alias-*` 主题令牌，跟随亮/暗色切换
-- **失败可诊断**：目录不可用时按钮变红、可点开看完整错误并重试
-
-## 状态
-
-| 阶段 | 状态 |
+| 能力 | 说明 |
 |---|---|
-| 设计方案 | ✅ → [docs/design.md](docs/design.md) |
-| M1 Spike 验证 | ✅ → [docs/m1-spike-result.md](docs/m1-spike-result.md) |
-| M2 MVP | ✅ 已实测通过 → [docs/m2-implementation.md](docs/m2-implementation.md) |
-| M3 打磨 | 🟡 部分（键盘/无障碍/i18n 已做；动画、Config、像素级对齐待办） |
-| 基本功能定稿 | ✅ v0.1.5 → [docs/releases/v0.1.5.md](docs/releases/v0.1.5.md) |
+| 两级导航 | 供应商页显示模型数量和当前使用标记，模型页只列出该家的模型 |
+| 分层搜索 | 首页搜索全部供应商，模型页仅搜索本家；支持大小写无关和模糊匹配 |
+| 思考强度 | 为支持推理的模型选择强度，并在当前应用进程内记忆成功选择的偏好 |
+| 当前项提示 | 高亮当前供应商和模型，切换后同步更新输入区显示 |
+| 键盘操作 | ↑↓ 移动，Enter 打开或确认，Esc 清空搜索、返回或关闭 |
+| 界面适配 | 跟随宿主主题，窗口变化时重新定位，点击外部关闭 |
+| 错误反馈 | 选择失败时保留菜单，目录不可用时提供诊断和重试入口 |
 
-**接手开发请按此顺序读**：
+### 界面预览
 
-1. 本文件（是什么、怎么跑）
-2. [docs/releases/v0.1.5.md](docs/releases/v0.1.5.md) —— **当前定稿：功能范围、验收结果、已知限制**；架构细节另见历史 v0.1.4 存档
-3. [docs/TASKS.md](docs/TASKS.md) —— 完整任务清单、依赖关系、验收标准
-4. [docs/design.md](docs/design.md) + [docs/decisions.md](docs/decisions.md) —— 设计与决策依据（**不要轻易推翻**）
-
-## 安装
-
-本插件当前**未发布到 npm**，用本地目录安装：
-
-```bash
-# 本地目录安装（开发期）；装完必须重启桌面应用
-dsh plugin --profile desktop add "D:/vibe_coding/dsh-plugin-develop"
-```
-
-也可在会话里用 `plugin_manager` 工具安装：`install_bundle target=D:\vibe_coding\dsh-plugin-develop`。
-
-卸载：
-
-```bash
-dsh plugin --profile desktop remove @local/dsh-model-picker-2level
-```
-
-卸载与回滚的详细验证步骤见 [docs/releases/v0.1.4.md §6](docs/releases/v0.1.4.md)。
-
-## 开发
-
-用户功能、实际键位及人工验收步骤见 [用户说明与验收手册](docs/user-guide-and-acceptance.md)。
-
-```bash
-# 安装仅供测试使用的 React / ReactDOM / jsdom（宿主运行时不依赖这些安装）
-npm ci
-
-# 清单与入口校验
-npm run validate
-
-# 全部自动化测试：纯函数、包结构和真实 React DOM 交互
-npm test
-```
-
-> 若 `npm test` 因沙箱禁止派生子进程报 `spawn EPERM`，直接 `node <file>` 执行即可，效果等价。
-
-本项目**无构建步骤**：`client.js` 直接以 `window.__ModuleLoader__.load(...)` 形式交付，仓库内提交的就是运行产物。
-
-> ⚠️ **改完 `client.js` 必须重启桌面应用**才能验证（客户端模块无热重载）。
-> 纯函数通过 `__pure` + `node:vm` 单测；交互测试用真实 React 和 jsdom 验证事件冒泡、异步写回及会话切换。
-> 当前审视与验证范围见 [docs/review-2026-10-27.md](docs/review-2026-10-27.md)。
-
-## 项目结构
-
-```
-.
-├─ .github/                     GitHub 模板与 CI
-├─ docs/
-│  ├─ releases/v0.1.5.md        ★ 当前定稿存档（接手先读这个）
-│  ├─ TASKS.md                  ★ 开发任务清单
-│  ├─ design.md                 设计方案
-│  ├─ decisions.md              决策记录（ADR）
-│  ├─ m1-spike-plan.md          M1 验证方案
-│  ├─ m1-spike-result.md        M1 实测结论
-│  ├─ m2-implementation.md      M2 实现记录 + 修复记录
-│  └─ assets/                   效果图
-├─ locale/                      Store 元数据（UI 字典内联在 client.js）
-├─ scripts/validate.mjs         清单与入口校验
-├─ test/                        Node 内置 test runner
-├─ client.js                    浏览器半（纯函数 + 样式 + 组件 + 注册）
-├─ cordis.patch.yml             Loader patch：把插件插进 profile
-├─ icon.svg                     插件图标
-├─ index.js                     Host 半（空实现）
-└─ package.json                 含 dsh.bundle / dsh.client 声明
-```
-
-## 实现要点
-
-| 关注点 | 做法 |
+| 供应商列表 | 模型列表 |
 |---|---|
-| 模型目录数据 | 复用内置 `modelDirectories` 服务，不自建状态 |
-| 注入依赖 | `['slots','modelDirectories','sessions','remote','remote.session']`（**`remote` 不能少**） |
-| 选择写回 | 复用 `directory.select()`，与 `/model` 走同一条路径 |
-| 座位 | 注册到 `conversation.input.model`（单例 Slot），并重新声明 `.label` 子 Slot |
-| 数据来源 | 全部来自 Host 投影，插件不 fold 会话事件 |
-| 样式 | 只用 `--dsw-alias-*` 令牌，类名 `dmp-` 前缀 |
+| ![供应商列表](docs/assets/provider-picker.png) | ![模型列表](docs/assets/model-picker.png) |
 
-原理与踩坑细节见 [docs/design.md](docs/design.md) 第 6 章与
-[docs/releases/v0.1.4.md](docs/releases/v0.1.4.md) 第 2 章。
+截图中的供应商和模型仅展示界面，实际列表以 Harness 中的配置为准。
+
+## 快速上手
+
+### 安装
+
+下载插件源码并进入项目目录后，执行：
+
+~~~sh
+dsh plugin --profile desktop add .
+~~~
+
+也可以安装本地插件归档文件，将路径替换为实际下载的文件：
+
+~~~sh
+dsh plugin --profile desktop add ./plugin.tgz
+~~~
+
+desktop 为 profile 示例，使用其他 profile 时替换名称。安装后重启整个 Harness。插件无需构建，本地安装不需要先安装开发依赖。
+
+### 卸载
+
+~~~sh
+dsh plugin --profile desktop remove @codewei823/dsh-model-picker-2level
+~~~
+
+卸载后重启 Harness，恢复宿主原有的模型选择器。
+
+## 使用方法
+
+1. 点击输入区的模型按钮，查看供应商列表。
+2. 选择供应商，进入该供应商的模型列表。单纯浏览不会改变当前模型。
+3. 点击目标模型，成功后菜单关闭，输入区显示新选择。
+4. 需要调整推理强度时，在供应商首页打开“思考强度”，选择可用档位。
+
+首页搜索跨全部供应商；进入供应商后，搜索范围限定在本家。清空搜索会恢复当前页列表。供应商按宿主规则排列，账号和官方供应商优先，其余保持目录顺序；未搜索的模型保持目录顺序。
+
+### 键盘
+
+| 按键 | 行为 |
+|---|---|
+| ↑ / ↓ | 移动列表高亮，不提交选择 |
+| Enter | 在模型按钮上打开菜单；进入高亮供应商或确认模型 / 强度；按钮有焦点时激活该按钮 |
+| Esc | 搜索有文字先清空；为空时返回供应商首页，首页则关闭 |
+| 空格 | 搜索框中输入文字，不激活插件按钮 |
+| Tab / Shift+Tab | 保留浏览器原有焦点行为，无插件自定义动作 |
+
+输入法组字确认不会触发选择。更多操作见 [用户指南](docs/usage.md)。
+
+## 兼容性与运行环境
+
+- DSH 运行时：当前声明支持 0.2.1-rc.3，可通过 dsh --version 查看。
+- 界面：面向 Harness Web 界面，包括桌面客户端内的 Web 界面。
+- 供应商：使用 Harness 已配置并提供到模型目录中的供应商和模型。
+- 子代理会话：模型按钮禁用，不能从该入口切换。
+
+其他运行时版本与平台的兼容性尚未声明。
+
+## 常见问题
+
+**安装后为什么界面没有变化？**
+
+重启整个 Harness，并确认插件安装到了当前使用的 profile。客户端模块没有热重载。
+
+**是否需要重新配置供应商或 API Key？**
+
+不需要。插件使用宿主已有目录，不提供凭证管理功能。
+
+**思考强度会一直保存吗？**
+
+偏好记忆仅在当前应用进程内有效，按供应商和模型共享。应用重启后，当前会话实际选择以宿主恢复的状态为准。
+
+**切换失败后如何重试？**
+
+菜单会保留错误信息。选择失败条中的“重试”只重载目录，再次提交需要重新选择目标项；目录不可用诊断面板的“重试”会重新解析目录服务。
 
 ## 已知限制
 
-- 无打开/切层动画
-- 插件 Config 未接线（搜索范围、计数显示等为硬编码默认值）
-- `aria-activedescendant` 未实现
-- 思考强度记忆仅在当前应用进程内有效
-- 未发布 npm
+- 无插件配置面板和打开 / 切层动画。
+- 读屏对高亮项的宣布尚不完整。
+- 尚无独立的刷新全部目录按钮，加载和缓存行为由宿主管理。
+- 宿主升级可能影响兼容性，应以声明的运行时版本为准。
 
-## 贡献
+## 贡献与许可证
 
-见 [CONTRIBUTING.md](CONTRIBUTING.md)。提交前请确认校验与三套测试全绿。
+欢迎报告问题或提交改进，参与方式见 [贡献指南](CONTRIBUTING.md)。
 
-## 许可证
-
-[MIT](LICENSE)
+本项目使用 [MIT License](LICENSE)，是面向 DeepSeek Harness 的社区插件。

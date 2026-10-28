@@ -1,66 +1,6 @@
-# 开发任务清单（TASKS）
+> 历史任务归档：用于回顾早期开发，不是当前功能规范。当前计划见 [路线图](../../ROADMAP.md)，当前操作见 [用户指南](../usage.md)。
 
-> **这份文档的目的**：让任何一个 AI 或开发者，只读项目空间里的内容就能接手并完成整个项目。
-> 每条任务都写明了**做什么、在哪做、怎么算做完、依赖谁**。
->
-> 项目路径：`D:\vibe_coding\dsh-plugin-develop`
-> 建立日期：2026-10-27
-> 当前阶段：**v0.1.5 基本功能定稿，用户实测通过，59 项自动化测试通过**；后续增强不纳入本次定稿范围。下方任务记录保留开发历史，当前键位与验收结论以 v0.1.5 存档和用户手册为准。
-
----
-
-## 0. 接手前必读（新 AI 从这里开始）
-
-按顺序读完这四份，再动手：
-
-| 顺序 | 文件 | 读它是为了知道 |
-|---|---|---|
-| 1 | [README.md](../README.md) | 项目是什么、结构、如何校验 |
-| 2 | [releases/v0.1.5.md](releases/v0.1.5.md) | **当前定稿**：功能、键位、验收与已知限制；架构历史见 v0.1.4 存档 |
-| 3 | [m2-implementation.md](m2-implementation.md) | M2 实现记录与 0.1.1~0.1.4 修复记录 |
-| 4 | [design.md](design.md) | 完整设计方案：座位机制、数据流、交互、UI、Config、风险 |
-| 5 | [decisions.md](decisions.md) | 关键决策及其理由（**不要推翻，除非有新证据**） |
-
-然后确认环境：
-
-```powershell
-# 宿主版本（设计基于此版本，其它版本需重新核对 API）
-Get-Content "D:\apps\DeepSeek Harness\version"          # 期望 44.7.0
-
-# 项目自检（必须双绿）
-cd D:\vibe_coding\dsh-plugin-develop
-node scripts/validate.mjs                                # 期望 ok
-node test/pure.test.mjs                                  # 期望 29 pass / 0 fail
-node test/package.test.mjs                               # 期望 8 pass / 0 fail
-```
-
-> **环境注意**：本机 `npm test` 可能因沙箱禁止派生子进程而报 `spawn EPERM`。
-> 此时改用 `node test/package.test.mjs` 直接执行，效果等价。CI 环境无此问题。
-
-### 现状快照（2026-10-27）
-
-- 宿主：DeepSeek Harness **44.7.0**，profile `desktop`
-- 用户真实配置：**4 家供应商**
-  - `zai-coding-cn`：**未显式列出模型**，由 DSH 内置定义提供 4 个（`glm-5.3` / `glm-5.3-flash` / `glm-5.3-highspeed` / `glm-4.6v`）
-  - `qiniu`：6 个显式模型
-  - `lyrouter`：21 个显式模型
-  - `kimi-api`：2 个显式模型
-  - 即：**配置里 29 个 + 内置补充 4 个 = 界面实际约 33 个模型**
-- 项目状态：**v0.1.4 功能可用**，两级选择、搜索、思考强度记忆、外部关闭、窗口跟随均已实测通过
-- 已初始化 git 仓库并打 tag `v0.1.4`
-- 存档文档：[releases/v0.1.4.md](releases/v0.1.4.md)
-
-> ⚠️ 核对数据时注意区分「配置里的显式模型」与「界面实际可选模型」：像 `zai-coding-cn` 这类走内置目录的供应商，模型不在 `cordis.patch.yml` 里，但会出现在界面上。验证数量时以运行时 `groups` 为准，不要只数配置文件。
-
-### 铁律（违反会返工）
-
-1. **不 require 任何 `@deepseek-ai/dsh-client-*` 包** —— 宿主升级会炸。需要激活顺序时只用 `package.json` 的 `dsh.client.inject`（只排序，不 import）
-2. **不写死颜色** —— 只用 `--dsw-alias-*` 主题令牌
-3. **不自建模型状态** —— 全部走内置 `modelDirectories` 服务，选中项永远读 `directory.current`
-4. **不动工作区外的文件** —— 除 `D:\vibe_coding\dsh-plugin-develop` 和安装插件本身
-5. **不改用户 profile 的既有配置** —— 安装插件用 `plugin_manager` / `dsh plugin add`，不要手写 `cordis.patch.yml`
-
----
+# 历史开发任务
 
 ## 1. 阶段总览与依赖图
 
@@ -107,7 +47,7 @@ node test/package.test.mjs                               # 期望 8 pass / 0 fai
 
 ### T-03 ✅ 记录架构决策
 
-- **产物**：[docs/decisions.md](decisions.md)（ADR-0001/0002/0003）
+- **产物**：[docs/decisions.md](../decisions.md)（ADR-0001/0002/0003）
 - **依赖**：T-01
 
 ### T-04 ✅ 生成效果图
@@ -175,7 +115,7 @@ node test/package.test.mjs                               # 期望 8 pass / 0 fai
 ### T-21 ✅ 判定：注册顺序能否抢占
 
 - **结果**：**能。**后激活的插件注册排在前面，成为 `entriesOfSlot()[0]`
-- **产出**：[decisions.md ADR-0004](decisions.md)、[ADR-0005](decisions.md)
+- **产出**：[decisions.md ADR-0004](../decisions.md)、[ADR-0005](../decisions.md)
 - **依赖**：T-20
 
 ### T-22 ✅ 跳过（无需抢占手段）
@@ -195,7 +135,7 @@ V1 直接通过，**不需要**尝试 priority 参数、Config 开关或调整�
 
 ## 3.1 ⚠️ M1 实测得出的三条强制规则
 
-以下规则由 T-20 实测得出，**后续所有任务必须遵守**（详见 [decisions.md ADR-0004](decisions.md)）：
+以下规则由 T-20 实测得出，**后续所有任务必须遵守**（详见 [decisions.md ADR-0004](../decisions.md)）：
 
 | # | 规则 | 原因 | 违背后果 |
 |---|---|---|---|
@@ -203,7 +143,7 @@ V1 直接通过，**不需要**尝试 priority 参数、Config 开关或调整�
 | **R2** | **子 Slot 必须由 winner 重复声明**：`children: { 'conversation.input.model.label': { kind: 'single', scope: 'session', inline: true } }` | 单例 Slot 的 children 来自 winner 的注册参数；不声明则内置的 `label` 声明消失（实测确认） | **静默回归**：界面看不出异常，但第三方插件注册失效且难排查 |
 | **R3** | **改 `client.js` 后必须重启整个应用**才能验证 | 桌面端无热更新，`dsh.client` 模块只在页面 boot 时加载 | 改了代码看不到效果，误以为代码没生效 |
 
-> R3 的推论：核心纯函数应抽到独立模块做单测（见 [ADR-0005](decisions.md)），避免每次都靠重启验证。
+> R3 的推论：核心纯函数应抽到独立模块做单测（见 [ADR-0005](../decisions.md)），避免每次都靠重启验证。
 
 ### T-24 ✅ 不需要（A 方案成立，不切 B）
 
@@ -239,7 +179,7 @@ V1 直接通过，**不需要**尝试 priority 参数、Config 开关或调整�
   - **不要** fold 会话事件、不要轮询
   - 供应商排序用内置的 `orderModelProviders` 语义（`deepseek-account` 第一、`deepseek-official` 第二，其余保持原序）
   - `deepseek-account` 显示名走 locale（「DeepSeek 账号」）
-- **验收**：控制台能打印出 4 家供应商与各家的模型数（`zai-coding-cn` 的模型由内置补充，配置里看不到但运行时会有）
+- **验收**：控制台能打印出 4 家供应商与各家的模型数（`provider-a` 的模型由内置补充，配置里看不到但运行时会有）
 - **依赖**：T-21（或 T-24）
 - **预计**：30 分钟
 
@@ -273,7 +213,7 @@ V1 直接通过，**不需要**尝试 priority 参数、Config 开关或调整�
   - 当前模型：品牌色 + 勾 + **自动滚动到可见**
   - 排序：配置顺序，不置顶
   - 行高 32px
-- **验收**：点 lyrouter → 看到它的 21 个模型，当前项打勾并已滚动到可视区
+- **验收**：点 provider-c → 看到它的 21 个模型，当前项打勾并已滚动到可视区
 - **依赖**：T-32
 - **预计**：40 分钟
 
@@ -299,14 +239,14 @@ V1 直接通过，**不需要**尝试 priority 参数、Config 开关或调整�
   - 有清除按钮；清空后**回到两级浏览**（不是关闭）
   - 结果里当前模型打标但**不置顶**
   - 空态：「无匹配模型」
-- **验收**：输入 `glm` → 跨供应商命中多条（当前配置下：zai 4 条 + qiniu 2 条 + lyrouter 2 条 = 8 条）
+- **验收**：输入 `glm` → 跨供应商命中多条（当前配置下：zai 4 条 + provider-b 2 条 + provider-c 2 条 = 8 条）
 - **依赖**：T-32
 - **预计**：40 分钟
 
 ### T-36 ✅ 实现二级搜索（本家）
 
 - **做什么**：二级搜索框，范围限定当前供应商
-- **验收**：进入 lyrouter 后输入 `glm` → 只命中 `z-ai/glm-5.3`、`z-ai/glm-5.3-flash` 两条
+- **验收**：进入 provider-c 后输入 `glm` → 只命中 `z-ai/glm-5.3`、`z-ai/glm-5.3-flash` 两条
 - **依赖**：T-33、T-35
 - **预计**：20 分钟
 
@@ -343,7 +283,7 @@ V1 直接通过，**不需要**尝试 priority 参数、Config 开关或调整�
 
 ```powershell
 node scripts/validate.mjs && node test/package.test.mjs
-# 手动：安装插件 → 打开会话 → 点模型按钮 → 一级选 lyrouter → 二级选 deepseek-v4.1-flash → 发消息确认生效
+# 手动：安装插件 → 打开会话 → 点模型按钮 → 一级选 provider-c → 二级选 deepseek-v4.1-flash → 发消息确认生效
 ```
 
 ---
@@ -474,14 +414,14 @@ node scripts/validate.mjs && node test/package.test.mjs
 
 ```powershell
 # 项目目录
-cd D:\vibe_coding\dsh-plugin-develop
+cd <repository>
 
 # 自检（每次改完都跑）
 node scripts/validate.mjs
 node test/package.test.mjs
 
 # 安装插件到当前 profile（重启 Harness 生效）
-dsh plugin --profile desktop add "D:\vibe_coding\dsh-plugin-develop"
+dsh plugin --profile desktop add "<repository>"
 
 # 卸载
 dsh plugin --profile desktop remove @local/dsh-model-picker-2level
@@ -490,7 +430,7 @@ dsh plugin --profile desktop remove @local/dsh-model-picker-2level
 dsh --profile desktop --dump-config
 
 # 宿主版本
-Get-Content "D:\apps\DeepSeek Harness\version"
+Get-Content "<Harness installation>/version"
 
 # 用户当前配置（供应商/模型清单，用于核对效果）
 Get-Content "$env:USERPROFILE\.dsh\profiles\desktop\cordis.patch.yml"

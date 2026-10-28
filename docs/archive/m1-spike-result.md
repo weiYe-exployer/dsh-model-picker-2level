@@ -1,3 +1,5 @@
+> 历史归档：保留早期设计与试验背景，部分内容已被后续版本取代。当前操作以 [用户指南](../usage.md)、[测试说明](../testing.md) 和 [架构说明](../architecture.md) 为准。
+
 # M1 Spike 执行记录
 
 > 执行日期：2026-10-27
@@ -10,7 +12,7 @@
 
 | 项 | 值 |
 |---|---|
-| 路径 | `D:\vibe_coding\dsh-plugin-develop\spike\` |
+| 路径 | `<repository>\spike\` |
 | 包名 | `@local/dsh-model-picker-spike` |
 | 版本 | 0.0.1 |
 | 安装方式 | `plugin_manager install_bundle`（目录目标） |
@@ -28,7 +30,7 @@ packageResult.exitCode: 0
 
 profile 侧核实：
 
-- `package.json` 依赖：`@local/dsh-model-picker-spike: link:D:/vibe_coding/dsh-plugin-develop/spike`
+- `package.json` 依赖：`@local/dsh-model-picker-spike: link:<repository>/spike`
 - `node_modules/@local/dsh-model-picker-spike` → Junction 指向源码目录 ✓
 - `plugin_manager list_plugins`：`entryId: include:model-picker-spike`，`enabled: true`，`fiberPhase: active` ✓
 
@@ -135,7 +137,7 @@ ctx.slots.register({
 ```
 [spike] modelDirectories = FOUND
 [spike] directoryFor -> OK
-[spike] groups = zai-coding-cn(4) qiniu(6) lyrouter(21) kimi-api(2)
+[spike] groups = provider-a(4) provider-b(6) provider-c(21) provider-d(2)
 ```
 
 若为 `MISSING`，M2 需要走 slot `inject` 通道拿目录（内置插件即如此）。

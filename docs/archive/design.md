@@ -1,9 +1,11 @@
+> 历史归档：保留早期设计与试验背景，部分内容已被后续版本取代。当前操作以 [用户指南](../usage.md)、[测试说明](../testing.md) 和 [架构说明](../architecture.md) 为准。
+
 # 两级模型选择器 插件设计方案
 
 > 状态：设计稿（待评审）
-> 目标环境：DeepSeek Harness 44.7.0 · profile `desktop` · Web GUI
-> 相关产物：[效果图](model-picker-2level.png)
-> 数据基线：4 家供应商 / 33 个模型（`zai-coding-cn` 4、`qiniu` 6、`lyrouter` 21、`kimi-api` 2）
+> 历史目标环境：Windows 桌面宿主 · profile `desktop` · Web GUI；DSH 运行时后来核实为 0.2.1-rc.3
+> 相关产物：[效果图](assets/model-picker-2level.png)
+> 数据基线：4 家供应商 / 33 个模型（`provider-a` 4、`provider-b` 6、`provider-c` 21、`provider-d` 2）
 
 ---
 
@@ -113,7 +115,7 @@ bundle 里它只有**一行**（`dsh-web-app/cordis.patch.yml` L412）：
 **结论（2026-10-27 实测）：注册顺序可以抢占，A 方案成立。**
 
 M1 探针（`@local/dsh-model-picker-spike`）注册同一 Slot 并渲染红色 `SPIKE` 按钮，重启应用后按钮出现，证明我们的注册成为 winner。详细记录见：
-[m1-spike-result.md](m1-spike-result.md)、[decisions.md ADR-0004](decisions.md)
+[m1-spike-result.md](m1-spike-result.md)、[decisions.md ADR-0004](../decisions.md)
 
 由此确定两条必须遵守的实践规则：
 
@@ -313,7 +315,7 @@ selection = { provider, model, reasoningEffort? }
 | 动画 | 打开 120ms 淡入 + 4px 上移；层级切换 90ms 横移（可用 `prefers-reduced-motion` 关闭） |
 | 颜色 | 仅使用 `--dsw-alias-*` token；字色 `label-primary/secondary` |
 
-> 效果图见 [model-picker-2level.png](model-picker-2level.png)。
+> 效果图见 [model-picker-2level.png](assets/model-picker-2level.png)。
 
 ---
 

@@ -11,9 +11,9 @@ body:
   - type: input
     id: dsh-version
     attributes:
-      label: DeepSeek Harness 版本
-      description: 设置 → 关于，或 `DeepSeek Harness.exe` 同目录的 `version` 文件
-      placeholder: '44.7.0'
+      label: DSH 运行时版本
+      description: 执行 dsh --version；请另行注明操作系统及桌面或浏览器宿主
+      placeholder: '0.2.1-rc.3 / Windows 桌面宿主'
     validations:
       required: true
 
@@ -21,7 +21,7 @@ body:
     id: plugin-version
     attributes:
       label: 插件版本
-      placeholder: '0.1.0'
+      placeholder: '0.1.5'
     validations:
       required: true
 
@@ -32,7 +32,7 @@ body:
       placeholder: |
         1. 打开任意会话
         2. 点击模型按钮
-        3. 选择 lyrouter
+        3. 选择某个供应商
         4. 看到……
     validations:
       required: true
@@ -55,7 +55,7 @@ body:
     id: logs
     attributes:
       label: 控制台报错 / 截图
-      description: 浏览器开发者工具 Console 面板的内容，或截图
+      description: 脱敏后的错误诊断、Console 内容或截图；不要提交密钥、私人会话或完整 profile 配置
       render: shell
     validations:
       required: false
