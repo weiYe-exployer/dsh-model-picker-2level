@@ -36,6 +36,12 @@ The screenshots show the interface. Available providers and models depend on you
 
 ### Install
 
+Install from npm:
+
+~~~sh
+dsh plugin --profile desktop add @codewei823/dsh-model-picker-2level
+~~~
+
 Download the source and run the following from the project directory:
 
 ~~~sh

@@ -1,6 +1,6 @@
 # 公开仓库与分发准备
 
-当前是公开准备阶段，已确认采用 GitHub 开源与 npm 发布，尚未执行上传、发布或市场提交。v0.1.5 标签保留已验收的功能内容；维护者已授权将已有两次提交和两个标签中的邮箱替换为 GitHub 隐私邮箱，代码树保持一致。公开准备产生的后续内容修改须用新提交及新版本记录，不覆盖基线内容。
+当前是公开准备阶段，已确认采用 GitHub 开源与 npm 发布，源码已上传 GitHub，npm v0.1.6 发布流程已准备；最终发布状态以 npm registry 为准，市场提交另行跟进。v0.1.5 标签保留已验收的功能内容；维护者已授权将已有两次提交和两个标签中的邮箱替换为 GitHub 隐私邮箱，代码树保持一致。公开准备产生的后续内容修改须用新提交及新版本记录，不覆盖基线内容。
 
 ## 已整理
 
@@ -9,13 +9,13 @@
 - 核实 DSH 运行时 0.2.1-rc.3，包暂时精确声明此版本；桌面外壳版本不作为兼容范围依据。
 - 安全说明反映实际 body portal、宿主写回和间接网络行为，不承诺固定漏洞响应时限。
 - 实际打包并隔离安装检查，验证安装包内文档目标完整。
-- 已确认 GitHub 账号 weiYe-exployer、npm 账号 codewei823；正式包名为 @codewei823/dsh-model-picker-2level，公开仓库 weiYe-exployer/dsh-model-picker-2level 已创建，首次源码上传准备中；保留 private: true 防误发布。
+- 已确认 GitHub 账号 weiYe-exployer、npm 账号 codewei823；正式包名为 @codewei823/dsh-model-picker-2level，公开仓库 weiYe-exployer/dsh-model-picker-2level 已创建，源码已上传；按维护者发布指令移除 private 并保留 public 发布配置。
 
 ## 发布前必须完成
 
 | 项目 | 当前状态与动作 |
 |---|---|
-| GitHub owner / repository | weiYe-exployer/dsh-model-picker-2level；公开空仓库已创建，元数据已填写，源码上传与 CI 状态以仓库为准 |
+| GitHub owner / repository | weiYe-exployer/dsh-model-picker-2level；源码已上传 main，元数据已填写，CI 状态以仓库为准 |
 | 公开作者身份 | 已按维护者授权使用 GitHub ID 格式的 noreply 邮箱，已有提交和标签邮箱已处理；作者名称保留 codeWei，原历史备份保留在公开仓库外 |
 | 正式包名与分发渠道 | GitHub + npm；npm 用户 codewei823，本机 npm whoami 已验证；清单、模块 id、patch、锁文件和当前安装说明已统一到 @codewei823/dsh-model-picker-2level；旧安装迁移待完成 |
 | 当前真实截图 | 已在维护者确认后截取 Harness 供应商页和模型页，裁剪为只含选择器的区域；已加入中英文 README，并通过安装包链接检查 |

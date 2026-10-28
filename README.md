@@ -36,6 +36,12 @@
 
 ### 安装
 
+通过 npm 安装：
+
+~~~sh
+dsh plugin --profile desktop add @codewei823/dsh-model-picker-2level
+~~~
+
 下载插件源码并进入项目目录后，执行：
 
 ~~~sh
