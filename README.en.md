@@ -87,7 +87,7 @@ Confirming an IME composition does not submit a selection.
 
 ## Compatibility
 
-- DSH runtime: currently declared for 0.2.1-rc.3. Check your version with dsh --version.
+- DSH runtime: declared for 0.2.1-rc.3 and every later 0.2.x version (engines.dsh range `^0.2.1-rc.3`). Check your version with dsh --version.
 - Interface: the Harness Web interface, including the Web interface inside the desktop application.
 - Providers: those already configured in Harness and exposed through its model directory.
 - Subagent sessions: the model button is disabled in these sessions.

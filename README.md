@@ -87,7 +87,7 @@ dsh plugin --profile desktop remove @codewei823/dsh-model-picker-2level
 
 ## 兼容性与运行环境
 
-- DSH 运行时：当前声明支持 0.2.1-rc.3，可通过 dsh --version 查看。
+- DSH 运行时：声明支持 0.2.1-rc.3 及以上全部 0.2.x 版本（engines.dsh 范围 `^0.2.1-rc.3`），可通过 dsh --version 查看。
 - 界面：面向 Harness Web 界面，包括桌面客户端内的 Web 界面。
 - 供应商：使用 Harness 已配置并提供到模型目录中的供应商和模型。
 - 子代理会话：模型按钮禁用，不能从该入口切换。

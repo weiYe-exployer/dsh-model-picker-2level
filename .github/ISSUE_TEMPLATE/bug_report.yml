@@ -13,7 +13,7 @@ body:
     attributes:
       label: DSH 运行时版本
       description: 执行 dsh --version；请另行注明操作系统及桌面或浏览器宿主
-      placeholder: '0.2.1-rc.3 / Windows 桌面宿主'
+      placeholder: '0.2.1-rc.5 / Windows 桌面宿主'
     validations:
       required: true
 

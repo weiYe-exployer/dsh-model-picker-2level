@@ -3,7 +3,7 @@
 ## 开发环境
 
 - Node.js ≥ 20（`node --version` 确认）
-- DSH 运行时 0.2.1-rc.3（当前精确兼容声明；用 `dsh --version` 核实）
+- DSH 运行时 0.2.1-rc.3 及以上 0.2.x 版本（engines.dsh 声明 `^0.2.1-rc.3`；用 `dsh --version` 核实）
 
 本项目**没有构建步骤**：`client.js` 就是交付产物，直接以 `window.__ModuleLoader__.load(...)` 的形式提交。修改后无需编译。
 

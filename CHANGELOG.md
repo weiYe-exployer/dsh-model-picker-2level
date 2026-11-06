@@ -9,6 +9,15 @@
 
 暂无。
 
+## [0.1.7] - 2026-11-06
+
+兼容 DSH 0.2.1-rc.5。运行功能沿用 v0.1.5 基线，未改动客户端代码。
+
+### Changed
+
+- engines.dsh 从精确版本 0.2.1-rc.3 改为范围声明 `^0.2.1-rc.3`：自动覆盖 0.2.x 全部版本（含 prerelease 与正式版），0.3.0 起的大版本更新仍被门禁拦截，需实机验证后再调整声明。DSH 按 semver 范围（含 prerelease）判定该字段。
+- 已核实 rc.5 捆绑的 dsh-client-ui-model-selection 仍以相同结构声明 `conversation.input.model` 槽位与 `conversation.input.model.label` 子槽位；同步更新 README、贡献指南、测试、架构与发布文档中的版本声明。
+
 ## [0.1.6] - 2026-10-28
 
 首次 npm 公开发行，正式包名为 @codewei823/dsh-model-picker-2level；运行功能沿用 v0.1.5 基线。

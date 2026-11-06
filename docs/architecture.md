@@ -31,6 +31,6 @@ client.js 内的 zh / en 字典由 ctx.locale.register 注册，用于界面文�
 
 ## 兼容声明
 
-本次已确认的运行时为 DSH 0.2.1-rc.3；engines.dsh 暂采用精确版本，避免对尚未验证的宿主版本作兼容承诺。Windows 桌面验收不等于 Linux / macOS 宿主已实测。核心 API、注入能力、Slot 胜出顺序和主题令牌均应在宿主升级时复验。
+engines.dsh 声明为范围 `^0.2.1-rc.3`：0.2.x 全部版本（含 prerelease 与正式版）自动兼容，0.3.0 起的大版本更新被门禁拦截，需实机验证后再调整声明。实机验证记录覆盖 0.2.1-rc.3 与 0.2.1-rc.5（Windows 桌面宿主）。宿主以 semver 范围（含 prerelease）判定该字段，不满足时启动会拒绝插件，可用 `dsh plugin allow-version` 按精确版本豁免。rc.3 → rc.5 复验确认 `conversation.input.model` 槽位、子槽位声明结构与注入点未变。Windows 桌面验收不等于 Linux / macOS 宿主已实测；范围内未实测的版本出现行为差异时，以人工验收清单为准排查。核心 API、注入能力、Slot 胜出顺序和主题令牌均应在宿主升级时复验。
 
 长期决策见 [ADR](decisions.md)，操作与键位见 [用户指南](usage.md)。
