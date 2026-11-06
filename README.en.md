@@ -2,13 +2,13 @@
 
 [中文](README.md) | English
 
-A lightweight, two-level model picker for [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness). Choose a provider, then a model, with global search and reasoning-effort selection available when you need them.
+A lightweight, two-column model picker for [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness). Browse providers on the left, pick from that provider's model cards on the right, with global search and reasoning-effort selection available when you need them.
 
 [Overview](#overview) · [Features](#features) · [Quick start](#quick-start) · [Usage](#usage) · [Compatibility](#compatibility) · [FAQ](#faq) · [Known limitations](#known-limitations)
 
 ## Overview
 
-A flat model list becomes harder to navigate as more providers are configured. This plugin separates provider browsing from model selection, so you can narrow the list first or search across all providers directly.
+A flat model list becomes harder to navigate as more providers are configured. This plugin puts providers and models into a single menu: narrow the scope on the left rail and pick a model card on the right, no drill-down pages involved — or search across all providers directly.
 
 It replaces the model picker in the Harness composer while using the host's existing model directory and session-selection service. Providers and models remain managed by Harness, and the built-in /model command remains available.
 
@@ -16,21 +16,19 @@ It replaces the model picker in the Harness composer while using the host's exis
 
 | Feature | Description |
 |---|---|
-| Two-level navigation | Browse providers with model counts and a current-provider indicator, then view that provider's models |
-| Scoped search | Search all providers from the home view or just one provider from its model view; matching is case-insensitive and supports fuzzy queries |
+| Two-column browsing | The left rail shows providers with a logo, model counts and a current-provider indicator; the right pane shows model cards with a vendor accent, display name and full id |
+| Global search | Search spans all providers and each hit shows its source provider; matching is case-insensitive and supports fuzzy queries |
 | Reasoning effort | Choose an available effort level for supported models and remember successful preferences within the running application |
 | Current selection | Highlight the current provider and model and update the composer after a successful selection |
-| Keyboard controls | Navigate with ↑↓, open or confirm with Enter, and clear search or go back with Esc |
+| Keyboard controls | Navigate with ↑↓, confirm with Enter, and clear search, go back or close with Esc |
 | Host integration | Follow the host theme, reposition on window changes, and dismiss on outside clicks |
 | Error feedback | Keep the menu open on selection failure and show diagnostics when the directory is unavailable |
 
 ### Preview
 
-| Provider list | Model list |
-|---|---|
-| ![Provider list](docs/assets/provider-picker.png) | ![Model list](docs/assets/model-picker.png) |
+![Two-column model picker](docs/assets/model-picker-2col.png)
 
-The screenshots show the interface. Available providers and models depend on your Harness configuration.
+The image is rendered with the shipped styles for illustration. Available providers and models depend on your Harness configuration.
 
 ## Quick start
 
@@ -66,20 +64,20 @@ Restart Harness to restore its original model picker.
 
 ## Usage
 
-1. Click the model button in the composer to open the provider list.
-2. Choose a provider to browse its models. Browsing alone does not change the active model.
-3. Select a model. On success, the menu closes and the composer reflects the new selection.
-4. For a model that supports reasoning, open the reasoning-effort entry on the provider home view and choose an available level.
+1. Click the model button in the composer. The left rail lists the providers; the right pane shows the current provider's models.
+2. Click another provider on the rail to switch the right pane. Browsing alone does not change the active model.
+3. Select a model card. On success, the menu closes and the composer reflects the new selection.
+4. For a model that supports reasoning, open the reasoning-effort entry at the bottom and choose an available level.
 
-Search from the home view spans all providers. Search within a provider is limited to its models. Clearing the query restores the current view. Provider ordering follows the host: account and official providers come first, followed by the remaining providers in directory order. Unfiltered models retain directory order.
+Search spans all providers and each hit shows its source provider. Clearing the query restores the browsed provider's models. Provider ordering follows the host: account and official providers come first, followed by the remaining providers in directory order. Unfiltered models retain directory order.
 
 ### Keyboard controls
 
 | Key | Action |
 |---|---|
-| ↑ / ↓ | Move the list highlight without selecting |
-| Enter | Open the menu from the model button; enter a highlighted provider or confirm a model / effort; activate a focused button |
-| Esc | Clear a nonempty search first; otherwise return to the provider home view, or close the menu from that view |
+| ↑ / ↓ | Move the model-card highlight without selecting |
+| Enter | Open the menu from the model button; confirm the highlighted model / effort; activate a focused button |
+| Esc | Clear a nonempty search first; from the effort pane return to the model cards; otherwise close the menu |
 | Space | Enter text in the search field; does not activate plugin buttons |
 | Tab / Shift+Tab | Keep the browser's existing focus behavior; no custom plugin action |
 

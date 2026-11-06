@@ -1,13 +1,13 @@
 /**
  * Browser half of @codewei823/dsh-model-picker-2level.
  *
- * A two-level model picker for the composer model seat
+ * A two-column model picker for the composer model seat
  * (`conversation.input.model`):
  *
- *   ① providers  → ② that provider's models
+ *   [ provider rail ]  →  [ model cards of the browsed provider ]
  *
- * Search stays available on both levels: level 1 searches every provider's
- * models (the stock behaviour), level 2 searches within the chosen provider.
+ * The rail browses without submitting; a card click submits. Search spans
+ * every provider and shows each hit's source on the card.
  *
  * Data and submission ride the built-in `modelDirectories` service — the same
  * one the stock picker and the `/model` command use — so no second source of
@@ -155,6 +155,43 @@ window.__ModuleLoader__.load({
       return provider?.name || provider?.id || '';
     }
 
+    /**
+     * Vendor slug of a model id: the segment before the first `/`
+     * (`bytedance/doubao-…` → `bytedance`). Ids without a slash are their own
+     * vendor, so single-vendor catalogs still get a stable chip.
+     */
+    function vendorOf(modelId) {
+      const text = String(modelId ?? '');
+      const at = text.indexOf('/');
+      return at === -1 ? text : text.slice(0, at);
+    }
+
+    /** One-or-two glyph mark shown inside a vendor chip. */
+    function vendorMark(slug) {
+      const text = String(slug ?? '').trim();
+      return text === '' ? '?' : text.slice(0, 1).toUpperCase();
+    }
+
+    /**
+     * Deterministic hue index for a vendor slug. A stable hash (not a real
+     * hash of content — just spread) keeps one vendor on one accent across
+     * opens, and different vendors mostly on different accents.
+     */
+    function vendorHue(slug) {
+      const text = String(slug ?? '');
+      let sum = 0;
+      for (let i = 0; i < text.length; i += 1) sum = (sum * 31 + text.charCodeAt(i)) >>> 0;
+      return sum % 6;
+    }
+
+    /** Card title: the model's display name, or the id without its vendor prefix. */
+    function modelTitle(model) {
+      if (model?.name) return String(model.name);
+      const id = String(model?.id ?? '');
+      const at = id.indexOf('/');
+      return at === -1 ? id : id.slice(at + 1);
+    }
+
     /** Total model count across providers (used by the search hit counter). */
     function totalModels(groups) {
       return (Array.isArray(groups) ? groups : []).reduce(
@@ -176,6 +213,9 @@ window.__ModuleLoader__.load({
     // styles — theme tokens only, `dmp-` prefix, scoped to the component
     // ─────────────────────────────────────────────────────────────────────
 
+    // Theme tokens only, except the `--dmp-hue-*` vendor palette below: those
+    // six accents are mixed at 14–16% over the overlay via color-mix, which
+    // keeps legible contrast on both the light and the dark theme.
     const CSS = `.dmp-root{min-width:0;position:relative}
 .dmp-trigger{display:flex;align-items:center;gap:4px;height:28px;max-width:min(360px,45cqw);min-width:0;padding:0 4px 0 8px;border:none;border-radius:var(--dsw-radius-sm);background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;font-weight:400;line-height:20px}
 .dmp-trigger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
@@ -186,33 +226,47 @@ window.__ModuleLoader__.load({
 .dmp-trigger-glyph{width:16px;height:16px;flex:none;opacity:.75}
 .dmp-chevron{flex:none;width:7px;height:7px;margin-left:3px;border-right:1.5px solid var(--dsw-alias-label-caption);border-bottom:1.5px solid var(--dsw-alias-label-caption);transform:rotate(45deg) translate(-1px,-1px);transition:transform .12s}
 .dmp-chevron-open{transform:rotate(-135deg) translate(-1px,-1px)}
-.dmp-menu{position:fixed;z-index:1100;display:flex;flex-direction:column;min-width:min(300px,100vw - 32px);max-width:min(420px,100vw - 32px);max-height:min(380px,100vh - 96px);overflow:hidden;padding:4px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent)}
+.dmp-menu{position:fixed;z-index:1100;display:flex;flex-direction:column;min-width:min(408px,100vw - 32px);max-width:min(456px,100vw - 32px);max-height:min(430px,100vh - 96px);overflow:hidden;padding:6px;border:1px solid var(--dsw-alias-border-l1);border-radius:12px;background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent)}
 .dmp-search-row{position:relative;padding:2px 2px 6px}
 .dmp-search{width:100%;height:30px;box-sizing:border-box;padding:0 26px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font-size:12px;outline:none}
 .dmp-search:focus{border-color:var(--dsw-alias-brand-primary)}
 .dmp-search-glyph{position:absolute;left:11px;top:12px;width:9px;height:9px;border:1.5px solid var(--dsw-alias-label-caption);border-radius:50%;pointer-events:none}
 .dmp-search-glyph:after{content:'';position:absolute;right:-4px;bottom:-3px;width:5px;height:1.5px;background:var(--dsw-alias-label-caption);transform:rotate(45deg)}
 .dmp-search-clear{position:absolute;right:8px;top:9px;width:16px;height:16px;border:none;border-radius:50%;background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:11px;line-height:1;padding:0}
-.dmp-groups{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-.dmp-group-label{padding:6px 8px 2px;font-size:11px;letter-spacing:.02em;color:var(--dsw-alias-label-secondary)}
+.dmp-body{display:flex;flex:1;min-height:0;gap:6px}
+.dmp-rail{width:140px;flex:none;display:flex;flex-direction:column;gap:2px;box-sizing:border-box;padding:2px;border-right:1px solid var(--dsw-alias-border-l1);overflow-y:auto;overscroll-behavior:contain}
+.dmp-rail-item{position:relative;display:flex;align-items:center;gap:7px;width:100%;box-sizing:border-box;padding:6px 7px;border:none;border-radius:9px;background:none;color:inherit;cursor:pointer;text-align:left}
+.dmp-rail-item:focus-visible{outline:none;box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary))}
+.dmp-rail-item:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.dmp-rail-item-browsing{background:var(--dsw-alias-bg-overlay);box-shadow:0 0 0 1px var(--dsw-alias-border-l1)}
+.dmp-rail-logo{width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:7px;background:color-mix(in srgb,var(--dmp-hue,var(--dsw-alias-label-caption)) 16%,transparent);color:var(--dmp-hue,var(--dsw-alias-label-caption));font-size:10px;font-weight:700;line-height:1}
+.dmp-rail-main{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}
+.dmp-rail-name{font-size:12px;font-weight:500;line-height:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dmp-rail-count{font-size:10px;line-height:12px;color:var(--dsw-alias-label-caption);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dmp-rail-dot{flex:none;width:6px;height:6px;margin-left:auto;border-radius:50%;background:var(--dsw-alias-brand-primary)}
+.dmp-pane{flex:1;min-width:0;display:flex;flex-direction:column}
+.dmp-pane-head{display:flex;align-items:center;gap:6px;padding:4px 6px 6px}
+.dmp-pane-head-title{min-width:0;font-size:12px;font-weight:600;line-height:16px;color:var(--dsw-alias-label-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dmp-pane-head .dmp-row-meta{margin-left:auto}
+.dmp-groups{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px;overflow-y:auto;overscroll-behavior:contain;padding:2px}
 .dmp-row{display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;border:none;border-radius:8px;background:none;color:inherit;cursor:pointer;text-align:left}
 .dmp-row:focus-visible{outline:none}
 .dmp-row-active{background:var(--dsw-alias-interactive-bg-hover)}
-.dmp-row-current{color:var(--dsw-alias-brand-primary)}
 .dmp-row-main{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}
 .dmp-row-title{font-size:13px;line-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dmp-row-sub{font-size:11px;line-height:15px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dmp-row-meta{flex:none;font-size:11px;color:var(--dsw-alias-label-caption)}
-.dmp-provider-row{padding:7px 8px}
-.dmp-provider-row .dmp-row-title{font-weight:500}
-.dmp-model-row{padding:4px 8px}
-.dmp-model-id{font-family:var(--dsw-font-family-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:12px;line-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dmp-badge{flex:none;padding:0 5px;border-radius:4px;background:color-mix(in srgb,var(--dsw-alias-brand-primary) 14%,transparent);color:var(--dsw-alias-brand-primary);font-size:10px;line-height:16px}
+.dmp-card{display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;padding:6px 9px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:transparent;color:inherit;cursor:pointer;text-align:left;transition:border-color .12s,box-shadow .12s}
+.dmp-card:focus-visible{outline:none;box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary))}
+.dmp-card:hover,.dmp-card.dmp-row-active{border-color:var(--dsw-alias-border-l2,var(--dsw-alias-border-l1));background:var(--dsw-alias-interactive-bg-hover)}
+.dmp-card-current{border-color:var(--dsw-alias-brand-primary);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 6%,transparent);box-shadow:0 0 0 1px var(--dsw-alias-brand-primary)}
+.dmp-card-vendor{width:26px;height:26px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:8px;background:color-mix(in srgb,var(--dmp-hue,var(--dsw-alias-label-caption)) 14%,transparent);color:var(--dmp-hue,var(--dsw-alias-label-caption));font-size:11px;font-weight:700;line-height:1}
+.dmp-card-main{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}
+.dmp-card-title{font-size:12px;font-weight:600;line-height:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dmp-model-id{font-family:var(--dsw-font-family-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:10.5px;line-height:14px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dmp-model-id-src{color:var(--dsw-alias-label-caption)}
 .dmp-check{flex:none;width:14px;height:14px;color:var(--dsw-alias-brand-primary)}
 .dmp-chev{flex:none;width:6px;height:6px;margin-right:4px;border-top:1.5px solid var(--dsw-alias-label-caption);border-right:1.5px solid var(--dsw-alias-label-caption);transform:rotate(45deg)}
-.dmp-back{display:flex;align-items:center;gap:6px;width:100%;box-sizing:border-box;padding:5px 6px;margin-bottom:2px;border:none;border-radius:8px;background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:12px;text-align:left}
-.dmp-back-glyph{font-size:14px;line-height:1}
-.dmp-back-name{color:var(--dsw-alias-label-primary);font-weight:500}
 .dmp-status{padding:10px 8px;font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .dmp-error{margin:4px 2px;padding:6px 8px;border-radius:8px;background:var(--dsw-alias-interactive-bg-hover-danger);color:var(--dsw-alias-state-error-primary);font-size:12px;display:flex;align-items:center;gap:8px}
 .dmp-retry{margin-left:auto;border:none;border-radius:6px;padding:2px 8px;background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-state-error-primary);cursor:pointer;font-size:11px}
@@ -224,7 +278,13 @@ window.__ModuleLoader__.load({
 .dmp-diag-body{margin:0 0 6px;padding:6px 8px;border-radius:6px;background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary);font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-word;max-height:160px;overflow:auto;user-select:text}
 .dmp-diag-hint{font-size:11px;color:var(--dsw-alias-label-caption)}
 .dmp-diag-retry{margin-top:8px;padding:4px 10px;border:1px solid var(--dsw-alias-border-l2);border-radius:6px;background:transparent;color:var(--dsw-alias-label-primary);font-size:12px;cursor:pointer}
-.dmp-trigger[data-dmp-unavailable]{color:var(--dsw-alias-state-error-primary)}`;
+.dmp-trigger[data-dmp-unavailable]{color:var(--dsw-alias-state-error-primary)}
+.dmp-hue-0{--dmp-hue:#4d6bfe}
+.dmp-hue-1{--dmp-hue:#0d9488}
+.dmp-hue-2{--dmp-hue:#e0801c}
+.dmp-hue-3{--dmp-hue:#7c5cff}
+.dmp-hue-4{--dmp-hue:#0e9f6e}
+.dmp-hue-5{--dmp-hue:#c2419a}`;
 
     let styleInjected = false;
 
@@ -276,7 +336,6 @@ window.__ModuleLoader__.load({
     // the picker component
     // ─────────────────────────────────────────────────────────────────────
 
-    const PANE_PROVIDERS = 'providers';
     const PANE_MODELS = 'models';
     const PANE_EFFORT = 'effort';
 
@@ -352,10 +411,11 @@ window.__ModuleLoader__.load({
       );
 
       const [open, setOpen] = React.useState(false);
-      const [pane, setPane] = React.useState(PANE_PROVIDERS);
-      // The provider whose models level 2 is showing. It must NOT be derived from
-      // the session's current provider: browsing ("which row did I click") and
-      // selection ("what is in use") are different things.
+      const [pane, setPane] = React.useState(PANE_MODELS);
+      // The provider whose models the right pane is showing. It must NOT be
+      // derived from the session's current provider: browsing ("which rail item
+      // did I click") and selection ("what is in use") are different things.
+      // It only defaults to the current provider when the menu opens.
       const [browsingGroupId, setBrowsingGroupId] = React.useState(null);
       const [query, setQuery] = React.useState('');
       const [active, setActive] = React.useState(0);
@@ -434,18 +494,17 @@ window.__ModuleLoader__.load({
         [groups, browsingGroupId, pane],
       );
 
+      // Default the rail to the provider in use (or the first one while the
+      // catalog arrives), without ever overriding an explicit rail click.
+      React.useEffect(() => {
+        if (!open) return;
+        if (browsingGroupId != null && groups.some((group) => group.id === browsingGroupId)) return;
+        const fallback = currentGroupId ?? groups[0]?.id ?? null;
+        setBrowsingGroupId((previous) => (previous === fallback ? previous : fallback));
+      }, [open, groups, browsingGroupId, currentGroupId]);
+
       const rows = React.useMemo(() => {
         const q = query.trim();
-        if (q !== '' && pane !== PANE_EFFORT) {
-          // Level 1 searches every provider; level 2 searches its own provider.
-          const scope = browsingGroup ? [browsingGroup] : groups;
-          const flat = [];
-          for (const group of scope) {
-            for (const model of rankModels(group.models, q)) flat.push({ kind: 'model', group, model });
-          }
-          return flat;
-        }
-        if (browsingGroup) return browsingGroup.models.map((model) => ({ kind: 'model', group: browsingGroup, model }));
         if (pane === PANE_EFFORT) {
           const reasoning = currentModel?.reasoning;
           if (!reasoning) return [];
@@ -460,14 +519,25 @@ window.__ModuleLoader__.load({
             subsequenceScore(row.label, q) >= 0 || subsequenceScore(row.effort, q) >= 0,
           );
         }
-        return groups.map((group) => ({ kind: 'provider', group }));
+        if (q !== '') {
+          // Search spans every provider; the rail stays put and each hit shows
+          // which provider it came from.
+          const flat = [];
+          for (const group of groups) {
+            for (const model of rankModels(group.models, q)) flat.push({ kind: 'model', group, model });
+          }
+          return flat;
+        }
+        if (browsingGroup) return browsingGroup.models.map((model) => ({ kind: 'model', group: browsingGroup, model }));
+        return [];
       }, [query, browsingGroup, pane, groups, currentModel, t]);
 
       const measure = React.useCallback(() => {
         const trigger = triggerRef.current;
         if (!trigger) return;
         const rect = trigger.getBoundingClientRect();
-        const width = Math.min(380, Math.max(288, Math.round(rect.width)));
+        // The two-column body needs a floor wider than the old drill-down menu.
+        const width = Math.min(456, Math.max(408, Math.round(rect.width)));
         const below = window.innerHeight - rect.bottom;
         const placeAbove = below < 320 && rect.top > below;
         setMenuPos({
@@ -512,7 +582,9 @@ window.__ModuleLoader__.load({
         menuEpoch.current += 1;
         setQuery('');
         setFailure(null);
-        setPane(PANE_PROVIDERS);
+        setPane(PANE_MODELS);
+        // The default-browsing effect below resolves null to the provider in
+        // use (or the first one) right after the catalog lands.
         setBrowsingGroupId(null);
         setOpen(true);
         measure();
@@ -521,12 +593,12 @@ window.__ModuleLoader__.load({
           if (searchRef.current) searchRef.current.focus();
           else if (menuRef.current) menuRef.current.focus();
         });
-      }, [locked, available, measure, load]);
+      }, [locked, measure, load]);
 
       const closeMenu = React.useCallback(() => {
         menuEpoch.current += 1;
         setOpen(false);
-        setPane(PANE_PROVIDERS);
+        setPane(PANE_MODELS);
         setBrowsingGroupId(null);
         setQuery('');
         if (triggerRef.current) triggerRef.current.focus();
@@ -551,13 +623,10 @@ window.__ModuleLoader__.load({
       // Land the highlight on the "currently in use" row when browsing (not while
       // searching — there the first hit is the natural highlight).
       React.useEffect(() => {
-        if (!open || query.trim() !== '') return;
-        let index = -1;
-        if (pane === PANE_PROVIDERS) {
-          index = rows.findIndex((row) => row.kind === 'provider' && row.group.id === currentGroupId);
-        } else if (pane === PANE_MODELS) {
-          index = rows.findIndex((row) => row.kind === 'model' && row.group.id === currentGroupId && row.model.id === current?.model);
-        }
+        if (!open || query.trim() !== '' || pane !== PANE_MODELS) return;
+        const index = rows.findIndex(
+          (row) => row.kind === 'model' && row.group.id === currentGroupId && row.model.id === current?.model,
+        );
         setActive((previous) => {
           const next = index >= 0 ? index : 0;
           return previous === next ? previous : next;
@@ -571,22 +640,28 @@ window.__ModuleLoader__.load({
         if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'nearest' });
       }, [open, active, rows]);
 
+      // Rail click: switch the right pane to another provider. Browsing and
+      // selection stay independent — this never submits anything.
+      const browseTo = React.useCallback(
+        (group) => {
+          if (!group) return;
+          setBrowsingGroupId(group.id);
+          setPane(PANE_MODELS);
+          setQuery('');
+          // Focus the model in use only when this is the provider in use;
+          // otherwise start at the top of the clicked provider's list.
+          const at =
+            group.id === current?.provider
+              ? (group.models ?? []).findIndex((model) => model.id === current?.model)
+              : -1;
+          setActive(at >= 0 ? at : 0);
+        },
+        [current],
+      );
+
       const choose = React.useCallback(
         async (row) => {
           if (!row || locked || pendingRef.current) return;
-          if (row.kind === 'provider') {
-            setBrowsingGroupId(row.group.id);
-            setPane(PANE_MODELS);
-            setQuery('');
-            // Focus the model in use only when this is the provider in use;
-            // otherwise start at the top of the clicked provider's list.
-            const at =
-              row.group.id === current?.provider
-                ? (row.group.models ?? []).findIndex((model) => model.id === current?.model)
-                : -1;
-            setActive(at >= 0 ? at : 0);
-            return;
-          }
           if (row.kind === 'effort' && !current) return;
           const epoch = menuEpoch.current;
           const stillOpen = () => mountedRef.current && epoch === menuEpoch.current;
@@ -632,9 +707,10 @@ window.__ModuleLoader__.load({
         [rows.length],
       );
 
+      // Escape from the effort pane returns to the model cards; there is no
+      // "provider level" to back out of any more.
       const goBack = React.useCallback(() => {
-        setPane(PANE_PROVIDERS);
-        setBrowsingGroupId(null);
+        setPane(PANE_MODELS);
         setQuery('');
         setActive(0);
       }, []);
@@ -655,7 +731,7 @@ window.__ModuleLoader__.load({
               setActive(0);
               return;
             }
-            if (pane !== PANE_PROVIDERS) {
+            if (pane === PANE_EFFORT) {
               goBack();
               return;
             }
@@ -680,36 +756,47 @@ window.__ModuleLoader__.load({
         [query, pane, rows, active, choose, closeMenu, goBack, stepActive],
       );
 
-      const renderProviderRow = (row, index) => {
-        const isCurrent = row.group.id === currentGroupId;
-        const count = (row.group.models ?? []).length;
+      const searching = query.trim() !== '';
+
+      // Left column: providers. Clicking browses; it never submits.
+      const renderRail = () => {
+        if (groups.length === 0) return null;
         return h(
-          'button',
-          {
-            key: 'p:' + row.group.id,
-            type: 'button',
-            role: 'menuitem',
-            className: 'dmp-row dmp-provider-row' + (index === active ? ' dmp-row-active' : '') + (isCurrent ? ' dmp-row-current' : ''),
-            'data-dmp-active': index === active ? '1' : undefined,
-            'aria-current': isCurrent ? 'true' : undefined,
-            onClick: () => choose(row),
-            onMouseMove: () => setActive(index),
-          },
-          h(
-            'span',
-            { className: 'dmp-row-main' },
-            h('span', { className: 'dmp-row-title' }, providerLabel(row.group, accountName)),
-            count === 0 ? h('span', { className: 'dmp-row-sub' }, t('provider.empty')) : null,
-          ),
-          isCurrent ? h('span', { className: 'dmp-badge' }, t('badge.current')) : null,
-          h('span', { className: 'dmp-row-meta' }, t('provider.count', { count })),
-          h('span', { className: 'dmp-chev', 'aria-hidden': 'true' }),
+          'div',
+          { className: 'dmp-rail', role: 'menu', 'aria-label': t('rail.aria') },
+          groups.map((group) => {
+            const isBrowsing = group.id === browsingGroupId;
+            const isCurrent = group.id === currentGroupId;
+            const count = (group.models ?? []).length;
+            const label = providerLabel(group, accountName);
+            return h(
+              'button',
+              {
+                key: 'r:' + group.id,
+                type: 'button',
+                role: 'menuitemradio',
+                'aria-checked': isBrowsing ? 'true' : 'false',
+                'aria-current': isCurrent ? 'true' : undefined,
+                title: isCurrent ? t('badge.current') : undefined,
+                className: 'dmp-rail-item dmp-hue-' + vendorHue(group.id) + (isBrowsing ? ' dmp-rail-item-browsing' : ''),
+                onClick: () => browseTo(group),
+              },
+              h('span', { className: 'dmp-rail-logo', 'aria-hidden': 'true' }, vendorMark(label || group.id)),
+              h(
+                'span',
+                { className: 'dmp-rail-main' },
+                h('span', { className: 'dmp-rail-name' }, label),
+                h('span', { className: 'dmp-rail-count' }, count === 0 ? t('provider.empty') : t('provider.count', { count })),
+              ),
+              isCurrent ? h('span', { className: 'dmp-rail-dot', 'aria-hidden': 'true' }) : null,
+            );
+          }),
         );
       };
 
-      const renderModelRow = (row, index) => {
+      const renderModelCard = (row, index) => {
         const isCurrent = current?.provider === row.group.id && current?.model === row.model.id;
-        const showProvider = browsingGroup === null;
+        const slug = vendorOf(row.model.id);
         return h(
           'button',
           {
@@ -717,24 +804,28 @@ window.__ModuleLoader__.load({
             type: 'button',
             role: 'menuitemradio',
             'aria-checked': isCurrent ? 'true' : 'false',
-            className: 'dmp-row dmp-model-row' + (index === active ? ' dmp-row-active' : '') + (isCurrent ? ' dmp-row-current' : ''),
+            className: 'dmp-card dmp-hue-' + vendorHue(slug) + (index === active ? ' dmp-row-active' : '') + (isCurrent ? ' dmp-card-current' : ''),
             'data-dmp-active': index === active ? '1' : undefined,
             onClick: () => choose(row),
             onMouseMove: () => setActive(index),
           },
-          showProvider
-            ? h(
-                'span',
-                { className: 'dmp-row-main' },
-                h('span', { className: 'dmp-model-id' }, row.model.id),
-                h('span', { className: 'dmp-row-sub' }, providerLabel(row.group, accountName)),
-              )
-            : h('span', { className: 'dmp-model-id dmp-row-main' }, row.model.id),
+          h('span', { className: 'dmp-card-vendor', 'aria-hidden': 'true' }, vendorMark(slug)),
+          h(
+            'span',
+            { className: 'dmp-card-main' },
+            h('span', { className: 'dmp-card-title' }, modelTitle(row.model)),
+            h(
+              'span',
+              { className: 'dmp-model-id' },
+              row.model.id,
+              searching ? h('span', { className: 'dmp-model-id-src' }, ' \u00b7 ' + providerLabel(row.group, accountName)) : null,
+            ),
+          ),
           isCurrent ? h(Check) : null,
         );
       };
 
-      const renderEffortRow = (row, index) => {
+      const renderEffortCard = (row, index) => {
         const reasoning = currentModel?.reasoning;
         const effort = current?.reasoningEffort ?? reasoning?.defaultEffort;
         const isCurrent = (row.effort ?? undefined) === (effort ?? undefined);
@@ -745,32 +836,35 @@ window.__ModuleLoader__.load({
             type: 'button',
             role: 'menuitemradio',
             'aria-checked': isCurrent ? 'true' : 'false',
-            className: 'dmp-row dmp-model-row' + (index === active ? ' dmp-row-active' : '') + (isCurrent ? ' dmp-row-current' : ''),
+            className: 'dmp-card' + (index === active ? ' dmp-row-active' : '') + (isCurrent ? ' dmp-card-current' : ''),
             'data-dmp-active': index === active ? '1' : undefined,
             onClick: () => choose(row),
             onMouseMove: () => setActive(index),
           },
-          h('span', { className: 'dmp-model-id dmp-row-main' }, row.label),
+          h('span', { className: 'dmp-card-main' }, h('span', { className: 'dmp-card-title' }, row.label)),
           isCurrent ? h(Check) : null,
         );
       };
 
-      const header = browsingGroup
-        ? h(
-            'button',
-            { type: 'button', className: 'dmp-back', onClick: goBack },
-            h('span', { className: 'dmp-back-glyph', 'aria-hidden': 'true' }, '\u2039'),
-            h('span', { className: 'dmp-back-name' }, providerLabel(browsingGroup, accountName)),
-            h('span', { className: 'dmp-row-meta' }, t('provider.count', { count: (browsingGroup.models ?? []).length })),
-          )
-        : pane === PANE_EFFORT
-          ? h(
-              'button',
-              { type: 'button', className: 'dmp-back', onClick: goBack },
-              h('span', { className: 'dmp-back-glyph', 'aria-hidden': 'true' }, '\u2039'),
-              h('span', { className: 'dmp-back-name' }, t('effort.title')),
-            )
-          : null;
+      // Right column header: the browsed provider (or the search hit counter,
+      // or the effort pane title).
+      const paneHead =
+        pane === PANE_EFFORT
+          ? h('div', { className: 'dmp-pane-head' }, h('span', { className: 'dmp-pane-head-title' }, t('effort.title')))
+          : browsingGroup
+            ? h(
+                'div',
+                { className: 'dmp-pane-head' },
+                h(
+                  'span',
+                  { className: 'dmp-pane-head-title' },
+                  searching ? t('search.results', { count: rows.length }) : providerLabel(browsingGroup, accountName),
+                ),
+                searching
+                  ? null
+                  : h('span', { className: 'dmp-row-meta' }, t('provider.count', { count: (browsingGroup.models ?? []).length })),
+              )
+            : null;
 
       // When the directory cannot be resolved there is nothing to browse; show
       // the full, untruncated reason instead of an empty list. The desktop app
@@ -788,22 +882,29 @@ window.__ModuleLoader__.load({
       const body = (() => {
         if (loading && rows.length === 0) return h('div', { className: 'dmp-status' }, t('status.loading'));
         if (rows.length === 0) {
-          return h('div', { className: 'dmp-status' }, query.trim() !== '' ? t('search.empty') : t('empty.models'));
+          return h('div', { className: 'dmp-status' }, searching ? t('search.empty') : t('empty.models'));
         }
         return h(
           'div',
-          { className: 'dmp-groups', ref: listRef, role: 'menu', 'aria-label': t('menu.aria') },
-          query.trim() !== '' && browsingGroup === null && pane !== PANE_EFFORT
-            ? h('div', { className: 'dmp-group-label' }, t('search.results', { count: rows.length }))
-            : null,
-          rows.map((row, index) =>
-            row.kind === 'provider' ? renderProviderRow(row, index) : row.kind === 'effort' ? renderEffortRow(row, index) : renderModelRow(row, index),
+          { className: 'dmp-body' },
+          renderRail(),
+          h(
+            'div',
+            { className: 'dmp-pane' },
+            paneHead,
+            h(
+              'div',
+              { className: 'dmp-groups', ref: listRef, role: 'menu', 'aria-label': t('menu.aria') },
+              rows.map((row, index) =>
+                row.kind === 'effort' ? renderEffortCard(row, index) : renderModelCard(row, index),
+              ),
+            ),
           ),
         );
       })();
 
       const effortEntry =
-        pane === PANE_PROVIDERS && query.trim() === '' && currentModel?.reasoning
+        pane === PANE_MODELS && !searching && currentModel?.reasoning
           ? h(
               'div',
               { className: 'dmp-effort-row' },
@@ -812,7 +913,7 @@ window.__ModuleLoader__.load({
                 'button',
                 {
                   type: 'button',
-                  className: 'dmp-row dmp-model-row',
+                  className: 'dmp-row',
                   onClick: () => {
                     setPane(PANE_EFFORT);
                     setQuery('');
@@ -859,8 +960,8 @@ window.__ModuleLoader__.load({
                     className: 'dmp-search',
                     type: 'text',
                     role: 'searchbox',
-                    'aria-label': t(pane === PANE_EFFORT ? 'search.placeholderEffort' : browsingGroup ? 'search.placeholderLocal' : 'search.placeholder'),
-                    placeholder: t(pane === PANE_EFFORT ? 'search.placeholderEffort' : browsingGroup ? 'search.placeholderLocal' : 'search.placeholder'),
+                    'aria-label': t(pane === PANE_EFFORT ? 'search.placeholderEffort' : 'search.placeholder'),
+                    placeholder: t(pane === PANE_EFFORT ? 'search.placeholderEffort' : 'search.placeholder'),
                     value: query,
                     onChange: (event) => {
                       setQuery(event.target.value);
@@ -884,7 +985,6 @@ window.__ModuleLoader__.load({
                       )
                     : null,
                 ) : null,
-                header,
                 failure
                   ? h(
                       'div',
@@ -996,6 +1096,7 @@ window.__ModuleLoader__.load({
 
     const zh = {
       'menu.aria': '选择模型',
+      'rail.aria': '供应商',
       'provider.account': 'DeepSeek 账号',
       'provider.count': '{count} 个模型',
       'provider.empty': '0 个模型',
@@ -1005,7 +1106,6 @@ window.__ModuleLoader__.load({
       'status.loading': '正在加载模型目录…',
       'status.loadingShort': '加载模型…',
       'search.placeholder': '搜索全部模型（跨供应商）…',
-      'search.placeholderLocal': '在本供应商内搜索…',
       'search.placeholderEffort': '搜索思考强度…',
       'search.empty': '无匹配模型',
       'search.clear': '清除搜索',
@@ -1022,6 +1122,7 @@ window.__ModuleLoader__.load({
 
     const en = {
       'menu.aria': 'Choose a model',
+      'rail.aria': 'Providers',
       'provider.account': 'DeepSeek account',
       'provider.count': '{count} models',
       'provider.empty': '0 models',
@@ -1031,7 +1132,6 @@ window.__ModuleLoader__.load({
       'status.loading': 'Loading model catalog…',
       'status.loadingShort': 'Loading models…',
       'search.placeholder': 'Search all models (all providers)…',
-      'search.placeholderLocal': 'Search this provider…',
       'search.placeholderEffort': 'Search reasoning efforts…',
       'search.empty': 'No matching model',
       'search.clear': 'Clear search',
@@ -1143,6 +1243,10 @@ window.__ModuleLoader__.load({
         totalModels,
         flatMatches,
         resolveBrowsingGroup,
+        vendorOf,
+        vendorMark,
+        vendorHue,
+        modelTitle,
       },
     };
   },

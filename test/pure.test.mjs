@@ -221,8 +221,12 @@ test('plugin does not require Harness client packages', () => {
 test('plugin only uses theme tokens for colours', () => {
   const source = readFileSync(join(ROOT, 'client.js'), 'utf8');
   const css = source.slice(source.indexOf('const CSS ='), source.indexOf('let styleInjected'));
-  const literalColours = css.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(/g) ?? [];
-  assert.equal(literalColours.length, 0, 'CSS must use --dsw-alias-* tokens, not literal colours');
+  // The vendor palette (`--dmp-hue-*` custom properties) is the one deliberate
+  // exception: six accents mixed over the theme at 14–16% via color-mix, so
+  // vendor chips keep their colour coding on both themes.
+  const withoutPalette = css.replace(/\.dmp-hue-\d\{--dmp-hue:#[0-9a-fA-F]{3,8}\}/g, '');
+  const literalColours = withoutPalette.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(/g) ?? [];
+  assert.equal(literalColours.length, 0, 'CSS must use --dsw-alias-* tokens (only --dmp-hue-* may carry literals)');
 });
 
 // ── level-2 browsing independence (regression) ───────────────────────────

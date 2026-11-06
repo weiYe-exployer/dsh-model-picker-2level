@@ -110,18 +110,19 @@ async function check(options, run) {
   try { await run(ui); } finally { await ui.cleanup(); }
 }
 
-test('one ArrowDown in search advances exactly one provider', () => check({}, async (ui) => {
+test('one ArrowDown advances exactly one model card', () => check({}, async (ui) => {
   await ui.open();
+  // The highlight lands on the model in use ('a'), so one step reaches 'b'.
   await ui.key('ArrowDown');
-  assert.equal(ui.query('[data-dmp-active="1"] .dmp-row-title').textContent, 'q');
+  assert.equal(ui.query('[data-dmp-active="1"] .dmp-card-title').textContent, 'b');
 }));
 
-test('Enter on the effort button opens effort choices without selecting a provider', () => check({}, async (ui) => {
+test('Enter on the effort button opens effort choices in the right pane', () => check({}, async (ui) => {
   await ui.open();
   await ui.key('Enter', '.dmp-effort-row button');
   // Native Enter activates the button after keydown if not prevented.
   await ui.click('.dmp-effort-row button');
-  assert.equal(ui.query('.dmp-back-name').textContent, 'effort.title');
+  assert.equal(ui.query('.dmp-pane-head-title').textContent, 'effort.title');
 }));
 
 test('failed effort selection leaves remembered effort unchanged', () => check({ select: () => ({ ok: false, error: { code: 'session/writer-held' } }) }, async (ui) => {
@@ -140,7 +141,7 @@ test('unavailable directory keeps a compact trigger and manual retry really reso
     assert.match(ui.query('.dmp-diag-body').textContent, /not ready/);
     ready = true;
     await ui.click('.dmp-diag-retry');
-    assert.ok(ui.query('.dmp-provider-row'));
+    assert.ok(ui.query('.dmp-rail-item'));
   });
 });
 
@@ -153,8 +154,7 @@ test('changing session rebinds the directory instead of selecting in the previou
   return check({ resolve: (id, directory) => ({ ...directory, select: async () => { selected.push(id); return { ok: true }; } }) }, async (ui) => {
     await ui.render('s2');
     await ui.open();
-    await ui.click('.dmp-provider-row');
-    await ui.click('.dmp-model-row');
+    await ui.click('.dmp-card');
     assert.deepEqual(selected, ['s2']);
   });
 });
@@ -163,9 +163,7 @@ test('a selection completing after close and reopen does not dismiss the new men
   let finish;
   return check({ select: () => new Promise((resolve) => { finish = resolve; }) }, async (ui) => {
     await ui.open();
-    await ui.click('.dmp-provider-row');
-    await ui.click('.dmp-model-row');
-    await ui.key('Escape');
+    await ui.click('.dmp-card');
     await ui.key('Escape');
     await ui.open();
     await act(async () => finish({ ok: true }));
@@ -173,27 +171,23 @@ test('a selection completing after close and reopen does not dismiss the new men
   });
 });
 
-test('IME confirmation does not choose a provider', () => check({}, async (ui) => {
+test('IME confirmation does not choose a model', () => check({}, async (ui) => {
   await ui.open();
   await ui.key('Enter', '.dmp-search', { isComposing: true });
-  assert.ok(ui.query('.dmp-provider-row'));
-  assert.equal(ui.query('.dmp-back'), null);
+  assert.ok(ui.query('.dmp-card'));
+  assert.equal(ui.calls.length, 0);
 }));
 
-test('level 1 search spans providers, level 2 search stays local, Escape clears it first', () => check({}, async (ui) => {
+test('search spans providers and shows each hit source; Escape clears then closes', () => check({}, async (ui) => {
   await ui.open();
   await ui.input('d');
-  assert.equal(ui.query('.dmp-model-id').textContent, 'd');
+  assert.equal(ui.query('.dmp-model-id').textContent, 'd \u00b7 q');
   await ui.key('Escape');
-  assert.ok(ui.query('.dmp-provider-row'));
-  await ui.click('.dmp-provider-row');
-  await ui.input('d');
-  assert.equal(ui.query('.dmp-model-id'), null);
-  assert.equal(ui.query('.dmp-back-name').textContent, 'p');
+  assert.equal(ui.query('.dmp-search').value, '');
+  assert.ok(ui.query('.dmp-card'));
   await ui.key('Escape');
-  assert.ok(ui.query('.dmp-groups'));
-  await ui.key('Escape');
-  assert.ok(ui.query('.dmp-provider-row'));
+  assert.equal(ui.query('.dmp-menu'), null);
+  assert.equal(ui.calls.length, 0);
 }));
 
 test('inside pointer presses preserve menu, outside presses dismiss it', () => check({}, async (ui) => {
@@ -222,10 +216,9 @@ test('rejected selection stays open, shows an error and allows a second attempt'
   let count = 0;
   return check({ select: () => { if (++count === 1) throw new Error('offline'); return { ok: true }; } }, async (ui) => {
     await ui.open();
-    await ui.click('.dmp-provider-row');
-    await ui.click('.dmp-model-row');
+    await ui.click('.dmp-card');
     assert.ok(ui.query('.dmp-error'));
-    await ui.click('.dmp-model-row');
+    await ui.click('.dmp-card');
     assert.equal(ui.calls.length, 2);
     assert.equal(ui.query('.dmp-menu'), null);
   });
@@ -253,19 +246,19 @@ test('searching in the effort pane selects an effort instead of a model', () => 
   await ui.click('.dmp-effort-row button');
   await ui.input('high');
   assert.equal(ui.query('.dmp-groups').querySelectorAll('button').length, 1);
-  assert.equal(ui.query('.dmp-model-id').textContent, 'High');
+  assert.equal(ui.query('.dmp-card-title').textContent, 'High');
   await ui.key('Enter');
   assert.equal(ui.calls[0].model, 'a');
   assert.equal(ui.calls[0].reasoningEffort, 'high');
 }));
 
-test('opening another provider does not highlight its coincidentally identical model id', () => check({ snapshot: {
+test('browsing another provider does not highlight its coincidentally identical model id', () => check({ snapshot: {
   status: 'ready', failures: [], current: { provider: 'p', model: 'shared' },
   groups: [{ id: 'p', models: [{ id: 'shared' }] }, { id: 'q', models: [{ id: 'first' }, { id: 'shared' }] }],
 } }, async (ui) => {
   await ui.open();
-  await ui.click(ui.query('.dmp-groups').querySelectorAll('button')[1]);
-  assert.equal(ui.query('[data-dmp-active="1"] .dmp-model-id').textContent, 'first');
+  await ui.click(ui.query('.dmp-rail').querySelectorAll('button')[1]);
+  assert.equal(ui.query('[data-dmp-active="1"] .dmp-card-title').textContent, 'first');
 }));
 
 test('only Enter opens the trigger; arrows and Space do not open it', () => check({}, async (ui) => {
@@ -276,53 +269,74 @@ test('only Enter opens the trigger; arrows and Space do not open it', () => chec
   assert.equal(ui.query('.dmp-menu'), null);
   await ui.key('Enter', '.dmp-trigger');
   assert.ok(ui.query('.dmp-menu'));
-  await ui.key('Enter');
-  assert.equal(ui.query('.dmp-back-name').textContent, 'p');
   await ui.key('ArrowDown');
   await ui.key('Enter');
   assert.equal(ui.calls[0].model, 'b');
   assert.equal(ui.query('.dmp-menu'), null);
 }));
 
-for (const pane of ['models', 'effort']) {
-  test(`Tab and Shift+Tab have no custom action in the ${pane} pane`, () => check({}, async (ui) => {
-    await ui.open();
-    await ui.click(pane === 'models' ? '.dmp-provider-row' : '.dmp-effort-row button');
-    await ui.input('a');
-    const header = ui.query('.dmp-back-name').textContent;
-    for (const shiftKey of [false, true]) {
-      const event = await ui.key('Tab', '.dmp-search', { shiftKey });
-      assert.equal(event.defaultPrevented, false);
-      assert.equal(ui.query('.dmp-back-name')?.textContent, header);
-      assert.equal(ui.query('.dmp-search').value, 'a');
-      assert.equal(ui.calls.length, 0);
-    }
-    // jsdom does not perform native Tab traversal. These assertions verify
-    // only that the plugin leaves it to the browser and never navigates back.
-  }));
-
-  test(`Escape clears search then returns from ${pane}, then closes the menu`, () => check({}, async (ui) => {
-    await ui.open();
-    await ui.click(pane === 'models' ? '.dmp-provider-row' : '.dmp-effort-row button');
-    await ui.input('a');
-    await ui.key('Escape');
-    assert.equal(ui.query('.dmp-search').value, '');
-    assert.ok(ui.query('.dmp-back'));
-    await ui.key('Escape');
-    assert.equal(ui.query('.dmp-back'), null);
-    assert.ok(ui.query('.dmp-provider-row'));
-    await ui.key('Escape');
-    assert.equal(ui.query('.dmp-menu'), null);
+test('Tab and Shift+Tab have no custom action in the models pane', () => check({}, async (ui) => {
+  await ui.open();
+  await ui.input('a');
+  const header = ui.query('.dmp-pane-head-title').textContent;
+  for (const shiftKey of [false, true]) {
+    const event = await ui.key('Tab', '.dmp-search', { shiftKey });
+    assert.equal(event.defaultPrevented, false);
+    assert.equal(ui.query('.dmp-pane-head-title')?.textContent, header);
+    assert.equal(ui.query('.dmp-search').value, 'a');
     assert.equal(ui.calls.length, 0);
-  }));
-}
+  }
+  // jsdom does not perform native Tab traversal. These assertions verify
+  // only that the plugin leaves it to the browser and never navigates back.
+}));
+
+test('Tab and Shift+Tab have no custom action in the effort pane', () => check({}, async (ui) => {
+  await ui.open();
+  await ui.click('.dmp-effort-row button');
+  await ui.input('a');
+  const header = ui.query('.dmp-pane-head-title').textContent;
+  for (const shiftKey of [false, true]) {
+    const event = await ui.key('Tab', '.dmp-search', { shiftKey });
+    assert.equal(event.defaultPrevented, false);
+    assert.equal(ui.query('.dmp-pane-head-title')?.textContent, header);
+    assert.equal(ui.query('.dmp-search').value, 'a');
+    assert.equal(ui.calls.length, 0);
+  }
+}));
+
+test('Escape clears search then closes the menu from the models pane', () => check({}, async (ui) => {
+  await ui.open();
+  await ui.input('a');
+  await ui.key('Escape');
+  assert.equal(ui.query('.dmp-search').value, '');
+  assert.ok(ui.query('.dmp-card'));
+  await ui.key('Escape');
+  assert.equal(ui.query('.dmp-menu'), null);
+  assert.equal(ui.calls.length, 0);
+}));
+
+test('Escape returns from the effort pane to the model cards, then closes the menu', () => check({}, async (ui) => {
+  await ui.open();
+  await ui.click('.dmp-effort-row button');
+  await ui.input('a');
+  await ui.key('Escape');
+  assert.equal(ui.query('.dmp-search').value, '');
+  assert.ok(ui.query('.dmp-card'));
+  assert.equal(ui.query('.dmp-pane-head-title').textContent, 'effort.title');
+  await ui.key('Escape');
+  assert.equal(ui.query('.dmp-pane-head-title').textContent, 'p');
+  assert.ok(ui.query('.dmp-card'));
+  await ui.key('Escape');
+  assert.equal(ui.query('.dmp-menu'), null);
+  assert.equal(ui.calls.length, 0);
+}));
 
 test('Space cannot activate menu buttons and remains editable in search', () => check({}, async (ui) => {
   await ui.open();
-  for (const selector of ['.dmp-provider-row', '.dmp-effort-row button']) {
+  for (const selector of ['.dmp-rail-item', '.dmp-effort-row button']) {
     const space = await ui.key(' ', selector);
     assert.equal(space.defaultPrevented, true);
-    assert.equal(ui.query('.dmp-back'), null);
+    assert.equal(ui.calls.length, 0);
   }
   const searchSpace = await ui.key(' ');
   assert.equal(searchSpace.defaultPrevented, false);
