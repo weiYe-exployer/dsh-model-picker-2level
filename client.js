@@ -173,14 +173,30 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * Deterministic hue index for a vendor slug. A stable hash (not a real
-     * hash of content — just spread) keeps one vendor on one accent across
-     * opens, and different vendors mostly on different accents.
+     * Hue index for a vendor slug. Known providers get a stable semantic
+     * accent; anything else falls back to a stable hash so one vendor keeps
+     * one accent across opens and different vendors mostly differ.
      */
+    const VENDOR_HUE_MAP = {
+      bytedance: 0, // blue
+      kimi: 1,      // teal
+      moonshot: 1,
+      openai: 1,
+      minimax: 2,   // orange
+      anthropic: 2,
+      deepseek: 3,  // purple
+      'deepseek-account': 3,
+      'deepseek-official': 3,
+      qwen: 4,      // green
+      dashscope: 4,
+      zai: 5,       // magenta
+    };
+
     function vendorHue(slug) {
-      const text = String(slug ?? '');
+      const key = String(slug ?? '').trim().toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(VENDOR_HUE_MAP, key)) return VENDOR_HUE_MAP[key];
       let sum = 0;
-      for (let i = 0; i < text.length; i += 1) sum = (sum * 31 + text.charCodeAt(i)) >>> 0;
+      for (let i = 0; i < key.length; i += 1) sum = (sum * 31 + key.charCodeAt(i)) >>> 0;
       return sum % 6;
     }
 
@@ -238,8 +254,8 @@ window.__ModuleLoader__.load({
 .dmp-rail-item{position:relative;display:flex;align-items:center;gap:7px;width:100%;box-sizing:border-box;padding:6px 7px;border:none;border-radius:9px;background:none;color:inherit;cursor:pointer;text-align:left}
 .dmp-rail-item:focus-visible{outline:none;box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary))}
 .dmp-rail-item:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.dmp-rail-item-browsing{background:var(--dsw-alias-bg-overlay);box-shadow:0 0 0 1px var(--dsw-alias-border-l1)}
-.dmp-rail-logo{width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:7px;background:color-mix(in srgb,var(--dmp-hue,var(--dsw-alias-label-caption)) 16%,transparent);color:var(--dmp-hue,var(--dsw-alias-label-caption));font-size:10px;font-weight:700;line-height:1}
+.dmp-rail-item-browsing{background:color-mix(in srgb,var(--dsw-alias-label-primary) 7%,transparent);box-shadow:0 0 0 1px var(--dsw-alias-border-l1)}
+.dmp-rail-logo{width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:7px;background:color-mix(in srgb,var(--dmp-hue,var(--dsw-alias-label-caption)) 22%,transparent);color:color-mix(in srgb,var(--dmp-hue,var(--dsw-alias-label-caption)) 62%,var(--dsw-alias-label-primary));font-size:10px;font-weight:700;line-height:1}
 .dmp-rail-main{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}
 .dmp-rail-name{font-size:12px;font-weight:500;line-height:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dmp-rail-count{font-size:10px;line-height:12px;color:var(--dsw-alias-label-caption);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -256,11 +272,11 @@ window.__ModuleLoader__.load({
 .dmp-row-title{font-size:13px;line-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dmp-row-sub{font-size:11px;line-height:15px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dmp-row-meta{flex:none;font-size:11px;color:var(--dsw-alias-label-caption)}
-.dmp-card{display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;padding:6px 9px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:transparent;color:inherit;cursor:pointer;text-align:left;transition:border-color .12s,box-shadow .12s}
+.dmp-card{display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;padding:6px 9px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:color-mix(in srgb,var(--dsw-alias-label-primary) 4%,transparent);color:inherit;cursor:pointer;text-align:left;transition:border-color .12s,box-shadow .12s}
 .dmp-card:focus-visible{outline:none;box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary))}
-.dmp-card:hover,.dmp-card.dmp-row-active{border-color:var(--dsw-alias-border-l2,var(--dsw-alias-border-l1));background:var(--dsw-alias-interactive-bg-hover)}
-.dmp-card-current{border-color:var(--dsw-alias-brand-primary);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 6%,transparent);box-shadow:0 0 0 1px var(--dsw-alias-brand-primary)}
-.dmp-card-vendor{width:26px;height:26px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:8px;background:color-mix(in srgb,var(--dmp-hue,var(--dsw-alias-label-caption)) 14%,transparent);color:var(--dmp-hue,var(--dsw-alias-label-caption));font-size:11px;font-weight:700;line-height:1}
+.dmp-card:hover,.dmp-card.dmp-row-active{border-color:var(--dsw-alias-border-l2,var(--dsw-alias-border-l1));background:color-mix(in srgb,var(--dsw-alias-label-primary) 8%,transparent)}
+.dmp-card-current{border-color:var(--dsw-alias-brand-primary);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 10%,transparent);box-shadow:0 0 0 1px var(--dsw-alias-brand-primary)}
+.dmp-card-vendor{width:26px;height:26px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:8px;background:color-mix(in srgb,var(--dmp-hue,var(--dsw-alias-label-caption)) 22%,transparent);color:color-mix(in srgb,var(--dmp-hue,var(--dsw-alias-label-caption)) 62%,var(--dsw-alias-label-primary));font-size:11px;font-weight:700;line-height:1}
 .dmp-card-main{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}
 .dmp-card-title{font-size:12px;font-weight:600;line-height:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dmp-model-id{font-family:var(--dsw-font-family-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:10.5px;line-height:14px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
