@@ -1,6 +1,6 @@
 {
   "name": "@codewei823/dsh-model-picker-2level",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "Two-level model picker for DeepSeek Harness: choose a provider first, then one of its models.",
   "type": "module",
   "license": "MIT",
@@ -35,6 +35,7 @@
     "docs/publishing.md",
     "docs/releases/v0.1.5.md",
     "docs/releases/v0.1.7.md",
+    "docs/releases/v0.2.0.md",
     "docs/assets/*",
     "ROADMAP.md",
     "LICENSE",
